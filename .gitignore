@@ -1,0 +1,48 @@
+# Local Python environments and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Packaging and ROS/colcon output (at any depth)
+build/
+dist/
+*.egg-info/
+install/
+log/
+logs/
+
+# MuJoCo generated binaries and diagnostics
+*.mjb
+MUJOCO_LOG.TXT
+MJDATA.TXT
+MJMODEL.TXT
+
+# Robotics recordings and simulator state
+*.bag
+*.db3
+*.mcap
+*.ulg
+.ros/
+.gz/
+
+# Editors, OS files, secrets, and Blender backups
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+.env
+.env.*
+!.env.example
+*.blend1
+*.blend2

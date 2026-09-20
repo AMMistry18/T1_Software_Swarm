@@ -1,0 +1,7 @@
+# Runtime dependencies; keep this list minimal.
+mujoco
+numpy
+scipy
+matplotlib
+networkx
+pyyaml
