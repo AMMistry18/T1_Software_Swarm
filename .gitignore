@@ -46,3 +46,6 @@ Thumbs.db
 !.env.example
 *.blend1
 *.blend2
+
+# Personal Claude Code context (local working notes)
+CLAUDE.local.md
