@@ -26,6 +26,10 @@ MUJOCO_LOG.TXT
 MJDATA.TXT
 MJMODEL.TXT
 
+# Generated experiment output (keep the directory scaffold)
+experiments/results/*
+!experiments/results/.gitkeep
+
 # Robotics recordings and simulator state
 *.bag
 *.db3

@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import tar_swarm
-from tar_swarm.simulation.mujoco.smoke import run_smoke
+from tar_swarm.mujoco.simulation import run_smoke
 
 
 def test_package_imports():

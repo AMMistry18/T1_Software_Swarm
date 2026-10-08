@@ -1,0 +1,1 @@
+"""Greedy relay placement strategy."""

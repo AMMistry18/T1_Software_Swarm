@@ -43,35 +43,39 @@ In each new terminal, repeat the activation command for your platform. Run
 
 ```bash
 python -m pytest
-python scripts/mujoco_smoke.py
+python scripts/run_mujoco.py
 python -m ruff check .
 ```
 
 The smoke script prints the MuJoCo version, creates a falling sphere, and advances
 ten simulation steps without a window or rendering. You can also run it as
-`python -m tar_swarm.simulation.mujoco.smoke` from any directory after installation.
+`python -m tar_swarm.mujoco.simulation` from any directory after installation.
 GitHub Actions installs Python 3.12 and runs lint and pytest without a GUI.
 
 ## Repository structure
 
 ```text
+configs/                 # Scenarios and algorithm settings
 src/tar_swarm/
-  common/              # Shared math, geometry, configuration, utilities
-  estimation/          # Localization, fusion, degeneracy detection, SLAM algorithms
-  swarm/               # Graphs, allocation, exploration, relays, connectivity
-  simulation/
-    mujoco/            # MuJoCo wrappers and simulation runners
-    gazebo/            # Gazebo / ROS 2 / PX4 helpers
-models/{mujoco,gazebo}/       # Robot and object models
-environments/{mujoco,gazebo}/ # Simulation scenes and worlds
-scripts/               # Developer entry points
-tests/                 # Automated smoke tests
-docs/                  # Experiment notes and integration documentation
+  common/                # Shared drone, world, and configuration concepts
+  network/               # Graph, radio, and connectivity logic
+  mapping/               # Coverage and frontier algorithms
+  strategies/            # Mapper and relay decision strategies
+  metrics/               # Mission performance metrics
+  mujoco/                # MuJoCo simulation, control, and rendering adapters
+  gazebo/ros_nodes/      # Gazebo / ROS 2 / PX4 integration nodes
+assets/
+  mujoco/                # MuJoCo vehicle models and worlds
+  gazebo/                # Gazebo models and worlds
+experiments/              # Baseline definitions and generated results
+scripts/                  # Simulation and plotting entry points
+tests/                    # Automated tests
 ```
 
-Keep simulator-independent algorithms in `common/`, `estimation/`, or `swarm/`.
-For example, relay placement belongs in `swarm/`; its MuJoCo adapter belongs in
-`simulation/mujoco/`. The initial package contains no swarm algorithms.
+Keep simulator-independent algorithms in `common/`, `network/`, `mapping/`,
+`strategies/`, or `metrics/`. Simulator adapters belong in `mujoco/` or
+`gazebo/`. The initial package contains only module boundaries and the existing
+MuJoCo smoke simulation; swarm algorithms will be implemented later.
 
 ## Dependencies and external tools
 
@@ -90,7 +94,7 @@ See the official [ROS 2 Jazzy Ubuntu documentation](https://docs.ros.org/en/jazz
 and [Gazebo Harmonic installation guide](https://gazebosim.org/docs/harmonic/install_ubuntu/).
 
 Install **Blender separately** for environment and mesh creation, and export
-assets into the appropriate `models/` or `environments/` directory.
+assets into the appropriate `assets/mujoco/` or `assets/gazebo/` directory.
 
 ## Which simulator should I use?
 

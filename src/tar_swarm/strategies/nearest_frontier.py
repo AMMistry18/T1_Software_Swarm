@@ -1,0 +1,1 @@
+"""Nearest-frontier exploration strategy."""

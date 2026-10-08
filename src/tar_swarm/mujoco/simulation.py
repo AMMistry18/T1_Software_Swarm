@@ -1,4 +1,4 @@
-"""Run a tiny free-fall simulation without creating a GUI or renderer."""
+"""MuJoCo simulation helpers and a headless environment smoke test."""
 
 import mujoco
 
