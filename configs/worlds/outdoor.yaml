@@ -1,0 +1,8 @@
+name: outdoor
+ground_half_size_m: 30
+ground_station: {position_m: [-6, -5, 0.4], size_m: [0.8, 0.6, 0.8]}
+obstacles:
+  - {name: building_a, position_m: [9, 6, 2.5], size_m: [5, 4, 5]}
+  - {name: building_b, position_m: [-10, 7, 3], size_m: [5, 5, 6]}
+  - {name: building_c, position_m: [11, -8, 2], size_m: [4, 5, 4]}
+  - {name: low_wall, position_m: [-10, -5, 0.5], size_m: [0.3, 6, 1]}

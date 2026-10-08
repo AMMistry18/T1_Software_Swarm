@@ -1,0 +1,80 @@
+# All masses in kg, dimensions in m, gains in SI. See hardware_assumptions.yaml.
+mapping_drone:
+  arm_length_m: 0.48
+  propeller_diameter_in: 18
+  motor_count: 4
+  motor_mass_kg: 0.130
+  propeller_mass_kg: 0.0315
+  arm_mass_kg: 0.080
+  motor_radius_m: 0.035
+  motor_height_m: 0.035
+  arm_width_m: 0.028
+  max_rotor_thrust_n: 22.0
+  reaction_torque_ratio_m: 0.025
+  battery: {series_cells: 12, capacity_mah: 5000}
+  networking: {module: vocore2_32mb_dual_ufl, power_budget_w: 2.5}
+  controller:
+    type: cascaded_pd
+    position_kp: [2.5, 2.5, 4.0]
+    velocity_kd: [3.0, 3.0, 3.6]
+    attitude_kp: [70.0, 70.0, 35.0]
+    rate_kd: [16.0, 16.0, 10.0]
+    max_acceleration_m_s2: 3.0
+    max_tilt_deg: 25.0
+  # Box size is FULL extent; these include explicit missing-component allowances.
+  components:
+    - {name: center_frame, mass_kg: 0.280, size_m: [0.28, 0.28, 0.06], pos_m: [0, 0, 0]}
+    - {name: landing_gear, mass_kg: 0.080, size_m: [0.26, 0.24, 0.015], pos_m: [0, 0, -0.19]}
+    - {name: battery_12s, mass_kg: 1.450, size_m: [0.18, 0.12, 0.10], pos_m: [0, 0, -0.065]}
+    - {name: jetson_carrier_allowance, mass_kg: 0.200, size_m: [0.10, 0.08, 0.025], pos_m: [0, 0, 0.065]}
+    - {name: cube_carrier, mass_kg: 0.073, size_m: [0.055, 0.055, 0.04], pos_m: [0, 0, 0.10]}
+    - {name: unitree_l2, mass_kg: 0.230, size_m: [0.075, 0.075, 0.07], pos_m: [0, 0, -0.14]}
+    - {name: tf_luna, mass_kg: 0.005, size_m: [0.035, 0.021, 0.013], pos_m: [0.15, 0, 0]}
+    - {name: thermal_core, mass_kg: 0.001, size_m: [0.01, 0.01, 0.008], pos_m: [0.07, 0, -0.13]}
+    - {name: thermal_breakout, mass_kg: 0.008, size_m: [0.025, 0.025, 0.005], pos_m: [0.07, 0, -0.12]}
+    - {name: gnss_chip, mass_kg: 0.0005, size_m: [0.01, 0.01, 0.002], pos_m: [0, 0.04, 0.09]}
+    - {name: gnss_antenna_allowance, mass_kg: 0.015, size_m: [0.03, 0.03, 0.007], pos_m: [0, 0, 0.135]}
+    - {name: vocore_antenna_assembly, mass_kg: 0.005, size_m: [0.0256, 0.0256, 0.003], pos_m: [0, -0.05, 0.055]}
+    - {name: rc_receiver, mass_kg: 0.0015, size_m: [0.016, 0.011, 0.003], pos_m: [-0.05, 0, 0.045]}
+    - {name: escs_aggregate, mass_kg: 0.092, size_m: [0.12, 0.12, 0.008], pos_m: [0, 0, 0.035]}
+    - {name: pdb, mass_kg: 0.021, size_m: [0.05, 0.05, 0.008], pos_m: [0, 0, 0.042]}
+    - {name: bec, mass_kg: 0.007, size_m: [0.035, 0.02, 0.008], pos_m: [-0.07, 0, 0.04]}
+    - {name: pm02, mass_kg: 0.020, size_m: [0.04, 0.025, 0.008], pos_m: [0.07, 0, 0.04]}
+    - {name: harness_allowance, mass_kg: 0.110, size_m: [0.20, 0.20, 0.03], pos_m: [0, 0, 0]}
+    - {name: sensor_plate, mass_kg: 0.030, size_m: [0.12, 0.12, 0.005], pos_m: [0, 0, -0.105]}
+    - {name: custom_carrier, mass_kg: 0.020, size_m: [0.06, 0.06, 0.005], pos_m: [0, 0, 0.05]}
+relay_drone:
+  arm_length_m: 0.075
+  propeller_diameter_in: 3
+  motor_count: 4
+  motor_mass_kg: 0.0056
+  propeller_mass_kg: 0.0015
+  arm_mass_kg: 0.003
+  motor_radius_m: 0.008
+  motor_height_m: 0.012
+  arm_width_m: 0.008
+  max_rotor_thrust_n: 0.8
+  reaction_torque_ratio_m: 0.008
+  battery: {series_cells: 2, capacity_mah: 800}
+  networking: {module: vocore2_32mb_dual_ufl, power_budget_w: 2.5}
+  controller:
+    type: cascaded_pd
+    position_kp: [3.0, 3.0, 5.0]
+    velocity_kd: [3.5, 3.5, 4.0]
+    attitude_kp: [100.0, 100.0, 50.0]
+    rate_kd: [20.0, 20.0, 14.0]
+    max_acceleration_m_s2: 4.0
+    max_tilt_deg: 30.0
+  components:
+    - {name: center_frame, mass_kg: 0.013, size_m: [0.055, 0.055, 0.015], pos_m: [0, 0, 0]}
+    - {name: battery_2s, mass_kg: 0.045, size_m: [0.055, 0.030, 0.025], pos_m: [0, 0, -0.02]}
+    - {name: flight_pcb, mass_kg: 0.008, size_m: [0.036, 0.039, 0.0016], pos_m: [0, 0, 0.01]}
+    - {name: esp32_s3, mass_kg: 0.0008, size_m: [0.007, 0.007, 0.001], pos_m: [0.008, 0, 0.012]}
+    - {name: icm_42688, mass_kg: 0.0001, size_m: [0.003, 0.003, 0.001], pos_m: [0, 0, 0.012]}
+    - {name: gnss_chip, mass_kg: 0.0005, size_m: [0.01, 0.01, 0.002], pos_m: [-0.009, 0, 0.012]}
+    - {name: gnss_antenna_allowance, mass_kg: 0.003, size_m: [0.015, 0.015, 0.003], pos_m: [0, 0, 0.02]}
+    - {name: vocore_antenna_assembly, mass_kg: 0.005, size_m: [0.0256, 0.0256, 0.003], pos_m: [0, 0, 0.016]}
+    - {name: tf_luna, mass_kg: 0.005, size_m: [0.035, 0.021, 0.013], pos_m: [0.022, 0, -0.005]}
+    - {name: esc_4in1, mass_kg: 0.0054, size_m: [0.025, 0.025, 0.004], pos_m: [0, 0, 0.006]}
+    - {name: power_harness, mass_kg: 0.007, size_m: [0.04, 0.04, 0.006], pos_m: [0, 0, 0]}
+    - {name: regulator_passives_allowance, mass_kg: 0.002, size_m: [0.015, 0.015, 0.003], pos_m: [0, -0.01, 0.012]}

@@ -26,3 +26,7 @@ line-length = 88
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+# Preserve the earlier manual-flight experiment; new Step 0 code is fully linted.
+"models/mujoco/hover.py" = ["E501", "I001"]

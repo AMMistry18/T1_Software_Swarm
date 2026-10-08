@@ -1,0 +1,4 @@
+name: empty
+ground_half_size_m: 30
+ground_station: {position_m: [-6, -5, 0.4], size_m: [0.8, 0.6, 0.8]}
+obstacles: []

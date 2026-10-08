@@ -1,3 +1,57 @@
-<mujoco model="relay">
-  <worldbody/>
+<mujoco model="tar_step0_empty">
+  <compiler angle="radian" autolimits="true" inertiafromgeom="true" />
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="RK4" />
+  <statistic center="0 0 2" extent="15" />
+  <visual>
+    <global offwidth="1280" offheight="960" />
+    <headlight ambient="0.4 0.4 0.4" />
+  </visual>
+  <asset>
+    <texture name="sky" type="skybox" builtin="gradient" rgb1="0.35 0.55 0.8" rgb2="0.85 0.9 0.95" width="512" height="512" />
+    <texture name="grid" type="2d" builtin="checker" rgb1="0.24 0.32 0.24" rgb2="0.32 0.4 0.32" width="256" height="256" />
+    <material name="ground" texture="grid" texrepeat="30 30" />
+  </asset>
+  <worldbody>
+    <light pos="0 0 15" dir="-0.2 -0.3 -1" directional="true" />
+    <geom name="floor" type="plane" size="30 30 0.1" material="ground" friction="0.8 0.01 0.001" />
+    <geom name="ground_station" type="box" pos="-6 -5 0.4" size="0.4 0.3 0.4" rgba="0.9 0.7 0.1 1" />
+    <body name="relay_0" pos="-3 -3 0.05" quat="1 0 0 0">
+      <freejoint name="relay_0_free" />
+      <geom name="relay_0_center_frame" type="box" pos="-0.000827662721893 0.000147928994083 0.00314644970414" size="0.0275 0.0275 0.0075" quat="1 0 0 0" mass="0.013" rgba="0.95 0.45 0.06 1" group="0" contype="1" conaffinity="1" />
+      <geom name="relay_0_battery_2s" type="box" pos="-0.000827662721893 0.000147928994083 -0.0168535502959" size="0.0275 0.015 0.0125" quat="1 0 0 0" mass="0.045" rgba="0.12 0.12 0.15 1" group="0" contype="1" conaffinity="1" />
+      <geom name="relay_0_flight_pcb" type="box" pos="-0.000827662721893 0.000147928994083 0.0131464497041" size="0.018 0.0195 0.0008" quat="1 0 0 0" mass="0.008" rgba="0.95 0.45 0.06 1" group="0" contype="0" conaffinity="0" />
+      <geom name="relay_0_esp32_s3" type="box" pos="0.00717233727811 0.000147928994083 0.0151464497041" size="0.0035 0.0035 0.0005" quat="1 0 0 0" mass="0.0008" rgba="0.95 0.45 0.06 1" group="3" contype="0" conaffinity="0" />
+      <geom name="relay_0_icm_42688" type="box" pos="-0.000827662721893 0.000147928994083 0.0151464497041" size="0.0015 0.0015 0.0005" quat="1 0 0 0" mass="0.0001" rgba="0.95 0.45 0.06 1" group="3" contype="0" conaffinity="0" />
+      <geom name="relay_0_gnss_chip" type="box" pos="-0.00982766272189 0.000147928994083 0.0151464497041" size="0.005 0.005 0.001" quat="1 0 0 0" mass="0.0005" rgba="0.95 0.45 0.06 1" group="3" contype="0" conaffinity="0" />
+      <geom name="relay_0_gnss_antenna_allowance" type="box" pos="-0.000827662721893 0.000147928994083 0.0231464497041" size="0.0075 0.0075 0.0015" quat="1 0 0 0" mass="0.003" rgba="0.95 0.45 0.06 1" group="0" contype="1" conaffinity="1" />
+      <geom name="relay_0_vocore_antenna_assembly" type="box" pos="-0.000827662721893 0.000147928994083 0.0191464497041" size="0.0128 0.0128 0.0015" quat="1 0 0 0" mass="0.005" rgba="0.95 0.45 0.06 1" group="0" contype="1" conaffinity="1" />
+      <geom name="relay_0_tf_luna" type="box" pos="0.0211723372781 0.000147928994083 -0.00185355029586" size="0.0175 0.0105 0.0065" quat="1 0 0 0" mass="0.005" rgba="0.95 0.45 0.06 1" group="0" contype="1" conaffinity="1" />
+      <geom name="relay_0_esc_4in1" type="box" pos="-0.000827662721893 0.000147928994083 0.00914644970414" size="0.0125 0.0125 0.002" quat="1 0 0 0" mass="0.0054" rgba="0.95 0.45 0.06 1" group="3" contype="0" conaffinity="0" />
+      <geom name="relay_0_power_harness" type="box" pos="-0.000827662721893 0.000147928994083 0.00314644970414" size="0.02 0.02 0.003" quat="1 0 0 0" mass="0.007" rgba="0.95 0.45 0.06 1" group="3" contype="0" conaffinity="0" />
+      <geom name="relay_0_regulator_passives_allowance" type="box" pos="-0.000827662721893 -0.00985207100592 0.0151464497041" size="0.0075 0.0075 0.0015" quat="1 0 0 0" mass="0.002" rgba="0.95 0.45 0.06 1" group="3" contype="0" conaffinity="0" />
+      <geom name="relay_0_arm_0" type="box" pos="0.0256888415726 0.0266644332886 0.00314644970414" size="0.0375 0.004 0.004" quat="0.923879532511 0 0 0.382683432365" mass="0.003" rgba="0.95 0.45 0.06 1" group="0" contype="1" conaffinity="1" />
+      <geom name="relay_0_motor_0" type="cylinder" pos="0.0522053458671 0.0531809375831 0.00914644970414" size="0.008 0.006" quat="1 0 0 0" mass="0.0056" rgba="0.95 0.45 0.06 1" group="0" contype="1" conaffinity="1" />
+      <geom name="relay_0_propeller_0" type="cylinder" pos="0.0522053458671 0.0531809375831 0.0151464497041" size="0.0381 0.001" quat="1 0 0 0" mass="0.0015" rgba="0.15 0.15 0.18 0.5" group="0" contype="1" conaffinity="1" />
+      <geom name="relay_0_arm_1" type="box" pos="-0.0273441670164 0.0266644332886 0.00314644970414" size="0.0375 0.004 0.004" quat="0.382683432365 0 0 0.923879532511" mass="0.003" rgba="0.95 0.45 0.06 1" group="0" contype="1" conaffinity="1" />
+      <geom name="relay_0_motor_1" type="cylinder" pos="-0.0538606713109 0.0531809375831 0.00914644970414" size="0.008 0.006" quat="1 0 0 0" mass="0.0056" rgba="0.95 0.45 0.06 1" group="0" contype="1" conaffinity="1" />
+      <geom name="relay_0_propeller_1" type="cylinder" pos="-0.0538606713109 0.0531809375831 0.0151464497041" size="0.0381 0.001" quat="1 0 0 0" mass="0.0015" rgba="0.15 0.15 0.18 0.5" group="0" contype="1" conaffinity="1" />
+      <geom name="relay_0_arm_2" type="box" pos="-0.0273441670164 -0.0263685753004 0.00314644970414" size="0.0375 0.004 0.004" quat="0.382683432365 0 0 -0.923879532511" mass="0.003" rgba="0.95 0.45 0.06 1" group="0" contype="1" conaffinity="1" />
+      <geom name="relay_0_motor_2" type="cylinder" pos="-0.0538606713109 -0.0528850795949 0.00914644970414" size="0.008 0.006" quat="1 0 0 0" mass="0.0056" rgba="0.95 0.45 0.06 1" group="0" contype="1" conaffinity="1" />
+      <geom name="relay_0_propeller_2" type="cylinder" pos="-0.0538606713109 -0.0528850795949 0.0151464497041" size="0.0381 0.001" quat="1 0 0 0" mass="0.0015" rgba="0.15 0.15 0.18 0.5" group="0" contype="1" conaffinity="1" />
+      <geom name="relay_0_arm_3" type="box" pos="0.0256888415726 -0.0263685753004 0.00314644970414" size="0.0375 0.004 0.004" quat="0.923879532511 0 0 -0.382683432365" mass="0.003" rgba="0.95 0.45 0.06 1" group="0" contype="1" conaffinity="1" />
+      <geom name="relay_0_motor_3" type="cylinder" pos="0.0522053458671 -0.0528850795949 0.00914644970414" size="0.008 0.006" quat="1 0 0 0" mass="0.0056" rgba="0.95 0.45 0.06 1" group="0" contype="1" conaffinity="1" />
+      <geom name="relay_0_propeller_3" type="cylinder" pos="0.0522053458671 -0.0528850795949 0.0151464497041" size="0.0381 0.001" quat="1 0 0 0" mass="0.0015" rgba="0.15 0.15 0.18 0.5" group="0" contype="1" conaffinity="1" />
+      <site name="relay_0_rotor_0" pos="0.0522053458671 0.0531809375831 0.0151464497041" size="0.002" rgba="0 0 0 0" />
+      <site name="relay_0_rotor_1" pos="-0.0538606713109 0.0531809375831 0.0151464497041" size="0.002" rgba="0 0 0 0" />
+      <site name="relay_0_rotor_2" pos="-0.0538606713109 -0.0528850795949 0.0151464497041" size="0.002" rgba="0 0 0 0" />
+      <site name="relay_0_rotor_3" pos="0.0522053458671 -0.0528850795949 0.0151464497041" size="0.002" rgba="0 0 0 0" />
+      <site name="relay_0_heading" type="box" pos="0.01875 0 0.04" size="0.01125 0.005 0.005" rgba="1 0.1 0.1 1" />
+    </body>
+  </worldbody>
+  <actuator>
+    <motor name="relay_0_motor_0" site="relay_0_rotor_0" gear="0 0 1 0 0 0.008" ctrllimited="true" ctrlrange="0 0.8" forcelimited="true" forcerange="0 0.8" />
+    <motor name="relay_0_motor_1" site="relay_0_rotor_1" gear="0 0 1 0 0 -0.008" ctrllimited="true" ctrlrange="0 0.8" forcelimited="true" forcerange="0 0.8" />
+    <motor name="relay_0_motor_2" site="relay_0_rotor_2" gear="0 0 1 0 0 0.008" ctrllimited="true" ctrlrange="0 0.8" forcelimited="true" forcerange="0 0.8" />
+    <motor name="relay_0_motor_3" site="relay_0_rotor_3" gear="0 0 1 0 0 -0.008" ctrllimited="true" ctrlrange="0 0.8" forcelimited="true" forcerange="0 0.8" />
+  </actuator>
 </mujoco>

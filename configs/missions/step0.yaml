@@ -1,0 +1,42 @@
+# Timed smooth references; no online planner or collision avoidance.
+hover_windows_s: [[5, 7], [33, 36]]
+agents:
+  - id: mapper_0
+    vehicle: mapping_drone
+    spawn_m: [0, 0, 0.23]
+    yaw_rad: 0
+    waypoints:
+      - {time_s: 0, position_m: [0, 0, 0.23]}
+      - {time_s: 4, position_m: [0, 0, 3]}
+      - {time_s: 7, position_m: [0, 0, 3]}
+      - {time_s: 12, position_m: [3, 0, 3]}
+      - {time_s: 14, position_m: [3, 0, 3]}
+      - {time_s: 19, position_m: [3, 3, 3.5]}
+      - {time_s: 21, position_m: [3, 3, 3.5]}
+      - {time_s: 26, position_m: [0, 3, 3]}
+      - {time_s: 31, position_m: [0, 0, 3]}
+      - {time_s: 36, position_m: [0, 0, 3]}
+  - id: relay_0
+    vehicle: relay_drone
+    spawn_m: [-3, -3, 0.05]
+    yaw_rad: 0
+    waypoints:
+      - {time_s: 0, position_m: [-3, -3, 0.05]}
+      - {time_s: 4, position_m: [-3, -3, 2]}
+      - {time_s: 36, position_m: [-3, -3, 2]}
+  - id: relay_1
+    vehicle: relay_drone
+    spawn_m: [0, -3, 0.05]
+    yaw_rad: 0.5
+    waypoints:
+      - {time_s: 0, position_m: [0, -3, 0.05]}
+      - {time_s: 4, position_m: [0, -3, 2.3]}
+      - {time_s: 36, position_m: [0, -3, 2.3]}
+  - id: relay_2
+    vehicle: relay_drone
+    spawn_m: [3, -3, 0.05]
+    yaw_rad: -0.5
+    waypoints:
+      - {time_s: 0, position_m: [3, -3, 0.05]}
+      - {time_s: 4, position_m: [3, -3, 2.6]}
+      - {time_s: 36, position_m: [3, -3, 2.6]}

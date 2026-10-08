@@ -1,0 +1,12 @@
+physics_timestep_s: 0.002
+controller_interval_s: 0.01
+mission_interval_s: 0.02
+visualization_interval_s: 0.04
+log_interval_s: 0.02
+gravity_m_s2: 9.81
+duration_s: 36.0
+headless: false
+seed: 42
+vehicles_file: vehicles.yaml
+world_file: worlds/outdoor.yaml
+mission_file: missions/step0.yaml

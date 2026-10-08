@@ -1,3 +1,66 @@
-<mujoco model="mapper">
-  <worldbody/>
+<mujoco model="tar_step0_empty">
+  <compiler angle="radian" autolimits="true" inertiafromgeom="true" />
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="RK4" />
+  <statistic center="0 0 2" extent="15" />
+  <visual>
+    <global offwidth="1280" offheight="960" />
+    <headlight ambient="0.4 0.4 0.4" />
+  </visual>
+  <asset>
+    <texture name="sky" type="skybox" builtin="gradient" rgb1="0.35 0.55 0.8" rgb2="0.85 0.9 0.95" width="512" height="512" />
+    <texture name="grid" type="2d" builtin="checker" rgb1="0.24 0.32 0.24" rgb2="0.32 0.4 0.32" width="256" height="256" />
+    <material name="ground" texture="grid" texrepeat="30 30" />
+  </asset>
+  <worldbody>
+    <light pos="0 0 15" dir="-0.2 -0.3 -1" directional="true" />
+    <geom name="floor" type="plane" size="30 30 0.1" material="ground" friction="0.8 0.01 0.001" />
+    <geom name="ground_station" type="box" pos="-6 -5 0.4" size="0.4 0.3 0.4" rgba="0.9 0.7 0.1 1" />
+    <body name="mapper_0" pos="0 0 0.23" quat="1 0 0 0">
+      <freejoint name="mapper_0_free" />
+      <geom name="mapper_0_center_frame" type="box" pos="-0.000612724757953 6.36237897649e-05 0.0286266943292" size="0.14 0.14 0.03" quat="1 0 0 0" mass="0.28" rgba="0.1 0.4 0.9 1" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_landing_gear" type="box" pos="-0.000612724757953 6.36237897649e-05 -0.161373305671" size="0.13 0.12 0.0075" quat="1 0 0 0" mass="0.08" rgba="0.1 0.4 0.9 1" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_battery_12s" type="box" pos="-0.000612724757953 6.36237897649e-05 -0.0363733056708" size="0.09 0.06 0.05" quat="1 0 0 0" mass="1.45" rgba="0.12 0.12 0.15 1" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_jetson_carrier_allowance" type="box" pos="-0.000612724757953 6.36237897649e-05 0.0936266943292" size="0.05 0.04 0.0125" quat="1 0 0 0" mass="0.2" rgba="0.1 0.4 0.9 1" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_cube_carrier" type="box" pos="-0.000612724757953 6.36237897649e-05 0.128626694329" size="0.0275 0.0275 0.02" quat="1 0 0 0" mass="0.073" rgba="0.1 0.4 0.9 1" group="0" contype="0" conaffinity="0" />
+      <geom name="mapper_0_unitree_l2" type="box" pos="-0.000612724757953 6.36237897649e-05 -0.111373305671" size="0.0375 0.0375 0.035" quat="1 0 0 0" mass="0.23" rgba="0.15 0.8 0.7 1" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_tf_luna" type="box" pos="0.149387275242 6.36237897649e-05 0.0286266943292" size="0.0175 0.0105 0.0065" quat="1 0 0 0" mass="0.005" rgba="0.1 0.4 0.9 1" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_thermal_core" type="box" pos="0.069387275242 6.36237897649e-05 -0.101373305671" size="0.005 0.005 0.004" quat="1 0 0 0" mass="0.001" rgba="0.1 0.4 0.9 1" group="3" contype="0" conaffinity="0" />
+      <geom name="mapper_0_thermal_breakout" type="box" pos="0.069387275242 6.36237897649e-05 -0.0913733056708" size="0.0125 0.0125 0.0025" quat="1 0 0 0" mass="0.008" rgba="0.1 0.4 0.9 1" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_gnss_chip" type="box" pos="-0.000612724757953 0.0400636237898 0.118626694329" size="0.005 0.005 0.001" quat="1 0 0 0" mass="0.0005" rgba="0.1 0.4 0.9 1" group="3" contype="0" conaffinity="0" />
+      <geom name="mapper_0_gnss_antenna_allowance" type="box" pos="-0.000612724757953 6.36237897649e-05 0.163626694329" size="0.015 0.015 0.0035" quat="1 0 0 0" mass="0.015" rgba="0.1 0.4 0.9 1" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_vocore_antenna_assembly" type="box" pos="-0.000612724757953 -0.0499363762102 0.0836266943292" size="0.0128 0.0128 0.0015" quat="1 0 0 0" mass="0.005" rgba="0.1 0.4 0.9 1" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_rc_receiver" type="box" pos="-0.050612724758 6.36237897649e-05 0.0736266943292" size="0.008 0.0055 0.0015" quat="1 0 0 0" mass="0.0015" rgba="0.1 0.4 0.9 1" group="3" contype="0" conaffinity="0" />
+      <geom name="mapper_0_escs_aggregate" type="box" pos="-0.000612724757953 6.36237897649e-05 0.0636266943292" size="0.06 0.06 0.004" quat="1 0 0 0" mass="0.092" rgba="0.1 0.4 0.9 1" group="3" contype="0" conaffinity="0" />
+      <geom name="mapper_0_pdb" type="box" pos="-0.000612724757953 6.36237897649e-05 0.0706266943292" size="0.025 0.025 0.004" quat="1 0 0 0" mass="0.021" rgba="0.1 0.4 0.9 1" group="3" contype="0" conaffinity="0" />
+      <geom name="mapper_0_bec" type="box" pos="-0.070612724758 6.36237897649e-05 0.0686266943292" size="0.0175 0.01 0.004" quat="1 0 0 0" mass="0.007" rgba="0.1 0.4 0.9 1" group="3" contype="0" conaffinity="0" />
+      <geom name="mapper_0_pm02" type="box" pos="0.069387275242 6.36237897649e-05 0.0686266943292" size="0.02 0.0125 0.004" quat="1 0 0 0" mass="0.02" rgba="0.1 0.4 0.9 1" group="3" contype="0" conaffinity="0" />
+      <geom name="mapper_0_harness_allowance" type="box" pos="-0.000612724757953 6.36237897649e-05 0.0286266943292" size="0.1 0.1 0.015" quat="1 0 0 0" mass="0.11" rgba="0.1 0.4 0.9 1" group="3" contype="0" conaffinity="0" />
+      <geom name="mapper_0_sensor_plate" type="box" pos="-0.000612724757953 6.36237897649e-05 -0.0763733056708" size="0.06 0.06 0.0025" quat="1 0 0 0" mass="0.03" rgba="0.1 0.4 0.9 1" group="3" contype="0" conaffinity="0" />
+      <geom name="mapper_0_custom_carrier" type="box" pos="-0.000612724757953 6.36237897649e-05 0.0786266943292" size="0.03 0.03 0.0025" quat="1 0 0 0" mass="0.02" rgba="0.1 0.4 0.9 1" group="3" contype="0" conaffinity="0" />
+      <geom name="mapper_0_arm_0" type="box" pos="0.169092902727 0.169769251275 0.0286266943292" size="0.24 0.014 0.014" quat="0.923879532511 0 0 0.382683432365" mass="0.08" rgba="0.1 0.4 0.9 1" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_motor_0" type="cylinder" pos="0.338798530212 0.339474878759 0.0461266943292" size="0.035 0.0175" quat="1 0 0 0" mass="0.13" rgba="0.1 0.4 0.9 1" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_propeller_0" type="cylinder" pos="0.338798530212 0.339474878759 0.0636266943292" size="0.2286 0.001" quat="1 0 0 0" mass="0.0315" rgba="0.15 0.15 0.18 0.5" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_arm_1" type="box" pos="-0.170318352243 0.169769251275 0.0286266943292" size="0.24 0.014 0.014" quat="0.382683432365 0 0 0.923879532511" mass="0.08" rgba="0.1 0.4 0.9 1" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_motor_1" type="cylinder" pos="-0.340023979727 0.339474878759 0.0461266943292" size="0.035 0.0175" quat="1 0 0 0" mass="0.13" rgba="0.1 0.4 0.9 1" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_propeller_1" type="cylinder" pos="-0.340023979727 0.339474878759 0.0636266943292" size="0.2286 0.001" quat="1 0 0 0" mass="0.0315" rgba="0.15 0.15 0.18 0.5" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_arm_2" type="box" pos="-0.170318352243 -0.169642003695 0.0286266943292" size="0.24 0.014 0.014" quat="0.382683432365 0 0 -0.923879532511" mass="0.08" rgba="0.1 0.4 0.9 1" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_motor_2" type="cylinder" pos="-0.340023979727 -0.33934763118 0.0461266943292" size="0.035 0.0175" quat="1 0 0 0" mass="0.13" rgba="0.1 0.4 0.9 1" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_propeller_2" type="cylinder" pos="-0.340023979727 -0.33934763118 0.0636266943292" size="0.2286 0.001" quat="1 0 0 0" mass="0.0315" rgba="0.15 0.15 0.18 0.5" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_arm_3" type="box" pos="0.169092902727 -0.169642003695 0.0286266943292" size="0.24 0.014 0.014" quat="0.923879532511 0 0 -0.382683432365" mass="0.08" rgba="0.1 0.4 0.9 1" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_motor_3" type="cylinder" pos="0.338798530212 -0.33934763118 0.0461266943292" size="0.035 0.0175" quat="1 0 0 0" mass="0.13" rgba="0.1 0.4 0.9 1" group="0" contype="1" conaffinity="1" />
+      <geom name="mapper_0_propeller_3" type="cylinder" pos="0.338798530212 -0.33934763118 0.0636266943292" size="0.2286 0.001" quat="1 0 0 0" mass="0.0315" rgba="0.15 0.15 0.18 0.5" group="0" contype="1" conaffinity="1" />
+      <site name="mapper_0_rotor_0" pos="0.338798530212 0.339474878759 0.0636266943292" size="0.006" rgba="0 0 0 0" />
+      <site name="mapper_0_rotor_1" pos="-0.340023979727 0.339474878759 0.0636266943292" size="0.006" rgba="0 0 0 0" />
+      <site name="mapper_0_rotor_2" pos="-0.340023979727 -0.33934763118 0.0636266943292" size="0.006" rgba="0 0 0 0" />
+      <site name="mapper_0_rotor_3" pos="0.338798530212 -0.33934763118 0.0636266943292" size="0.006" rgba="0 0 0 0" />
+      <site name="mapper_0_heading" type="box" pos="0.12 0 0.04" size="0.072 0.005 0.005" rgba="1 0.1 0.1 1" />
+      <site name="mapper_0_lidar_down" pos="-0.000612724757953 6.36237897649e-05 -0.111373305671" zaxis="0 0 -1" size="0.01" rgba="0 1 1 1" />
+    </body>
+  </worldbody>
+  <actuator>
+    <motor name="mapper_0_motor_0" site="mapper_0_rotor_0" gear="0 0 1 0 0 0.025" ctrllimited="true" ctrlrange="0 22.0" forcelimited="true" forcerange="0 22.0" />
+    <motor name="mapper_0_motor_1" site="mapper_0_rotor_1" gear="0 0 1 0 0 -0.025" ctrllimited="true" ctrlrange="0 22.0" forcelimited="true" forcerange="0 22.0" />
+    <motor name="mapper_0_motor_2" site="mapper_0_rotor_2" gear="0 0 1 0 0 0.025" ctrllimited="true" ctrlrange="0 22.0" forcelimited="true" forcerange="0 22.0" />
+    <motor name="mapper_0_motor_3" site="mapper_0_rotor_3" gear="0 0 1 0 0 -0.025" ctrllimited="true" ctrlrange="0 22.0" forcelimited="true" forcerange="0 22.0" />
+  </actuator>
 </mujoco>

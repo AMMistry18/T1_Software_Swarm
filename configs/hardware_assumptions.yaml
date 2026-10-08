@@ -1,0 +1,33 @@
+# Status describes provenance, never hardware validation. No measured values yet.
+status_definitions:
+  manufacturer_specified: User BOM reference; exact purchased variant still requires verification.
+  estimated: Provisional value used to make Step 0 runnable.
+  TBD: Unknown and not implemented in Step 0.
+  measured: Reserved for future bench/flight measurements; currently none.
+mapping:
+  motor_mass: {status: manufacturer_specified, value_kg_each: 0.130}
+  lidar_mass: {status: manufacturer_specified, value_kg: 0.230}
+  propeller_diameter: {status: manufacturer_specified, value_in: 18}
+  battery_mass: {status: estimated, value_kg: 1.450}
+  airframe: {status: estimated, center_kg: 0.280, arms_total_kg: 0.320, landing_kg: 0.080, arm_length_m: 0.48}
+  jetson: {status: estimated, allowance_kg: 0.200, exact_model: TBD}
+  other_component_masses_and_mounts: {status: estimated, source: vehicles.yaml}
+  electrical_architecture: {status: TBD, note: PDB/BEC/PM02 retained as BOM allowances; possible overlapping functions require review.}
+relay:
+  motor_mass: {status: manufacturer_specified, value_kg_each: 0.0056}
+  pcb_dimensions: {status: manufacturer_specified, value_m: [0.036, 0.039, 0.0016]}
+  frame: {status: estimated, total_kg: 0.025, arm_length_m: 0.075, note: CAD link retrieval failed; geometry is NOT extracted from CAD.}
+  other_component_masses_and_mounts: {status: estimated, source: vehicles.yaml, note: PCB is bare-board allowance; chips and regulator separately counted.}
+  ap63205_vocore_supply: {status: TBD, note: No electrical load or regulator validation claimed.}
+both:
+  inertia_and_com: {status: estimated, method: Uniform primitive component inertias plus parallel-axis theorem; computed by MuJoCo.}
+  thrust_curves: {status: TBD, note: No verified motor/propeller thrust data.}
+  rotor_limits: {status: estimated, mapping_n_each: 22.0, relay_n_each: 0.8}
+  reaction_torque_ratio: {status: estimated, mapping_m: 0.025, relay_m: 0.008}
+  esc_dynamics: {status: TBD, simulation: Instantaneous force command; no lag or voltage dependence.}
+  battery_discharge_and_endurance: {status: TBD, simulation: No energy consumption or endurance prediction.}
+  sensor_mount_geometry: {status: estimated, note: Downward lidar mounting only; no simulated measurements.}
+  wiring_and_gnss_antenna: {status: estimated, source: Explicit allowances in vehicles.yaml.}
+  radio_antenna: {status: estimated, assembly_kg: 0.005, gain_orientation: TBD}
+  radio_forwarding_power: {status: estimated, budget_w: 2.5, note: Metadata only; no networking or electrical power simulation.}
+  firmware_mesh_and_goodput: {status: TBD, note: Neither 802.11s compatibility nor effective multi-hop throughput is established.}
