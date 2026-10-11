@@ -13,6 +13,11 @@ allowances. Relays reflect 1303 motors, 3-inch props, 2S batteries, a custom
 provisional: see [engineering assumptions and results](docs/step0_engineering.md)
 and [uncertainty registry](configs/hardware_assumptions.yaml).
 
+For the next implementation stages, use the
+[algorithm stack and build specification](docs/algorithm_stack.md). It defines
+the layer interfaces, milestone baselines, acceptance criteria, and Step 1
+implementation checklist.
+
 ## Install
 
 Use Python 3.12 and a project-local virtual environment. The inspected Windows

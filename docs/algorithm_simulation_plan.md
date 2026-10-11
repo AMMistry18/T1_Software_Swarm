@@ -1,5 +1,9 @@
 # Algorithm simulation and MuJoCo integration plan
 
+For the complete layer contracts, milestone specifications, and first-build
+checklist, see [Algorithm stack and build specification](algorithm_stack.md).
+This document explains the simulation architecture and its rationale.
+
 Status: proposed architecture and development sequence. The Step 0 MuJoCo
 backend is implemented; the algorithm simulator and algorithms below are not.
 
