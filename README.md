@@ -6,6 +6,20 @@ and baseline flight control**. The default mission has one mapper, three relays,
 and one ground station. Agent counts, vehicle parameters, gains, waypoints,
 clocks, gravity, and world geometry are configurable.
 
+A separate **basic network simulator** now supports fixed-step kinematic
+waypoint motion, a toy radius communication graph, ground-station reachability,
+animation, and headless logs/plots. It runs without MuJoCo:
+
+```bash
+python -m pip install -r requirements-network.txt
+python scripts/run_network.py --animate
+python scripts/run_network.py --headless
+```
+
+See the [network simulator guide](docs/network_simulator.md) for configuration,
+extension interfaces, metric conventions, and the verified disconnect/reconnect
+demo. The remaining sections below describe the MuJoCo Step 0 simulator.
+
 The mapper reflects the supplied 18-inch MAD propulsion / 12S battery BOM, with
 Jetson, Cube/carrier, downward Unitree L2, thermal camera, GNSS, and radio mass
 allowances. Relays reflect 1303 motors, 3-inch props, 2S batteries, a custom
@@ -155,8 +169,9 @@ docs/step0_engineering.md         equations, results, limitations
 Future planners can supply references; future networking can consume state
 snapshots independently of physics internals. The physics adapter provides state,
 bounded rotor commands, and deterministic single-step integration. Existing
-`network`, `mapping`, `strategies`, and Gazebo modules remain untouched
-placeholders; their filenames do not imply implemented algorithms.
+`mapping`, `strategies`, and Gazebo modules remain untouched placeholders;
+their filenames do not imply implemented algorithms. `network` contains the
+separate kinematic/radius-graph foundation described above.
 
 Export standalone MJCF examples after editing vehicle YAML:
 
@@ -193,6 +208,6 @@ edited routes need checking. The controller assumes ground truth and modest
 attitudes and does not handle inverted-flight recovery. Physical flight requires
 measured propulsion, inertia, timing, sensing, and electrical validation.
 
-The next separately authorized milestone is a dynamic wireless graph with
-directional delivery probabilities, line-of-sight checks, and ETX link cost.
-This implementation stops at Step 0.
+The full Step 1 wireless graph with directional delivery probabilities,
+line-of-sight checks, ETX link cost, and MuJoCo integration remains future work.
+The basic network simulator implements only toy radius edges and reachability.

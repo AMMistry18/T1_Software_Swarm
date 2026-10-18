@@ -1,0 +1,27 @@
+# Toy radius connectivity demo: meters, seconds; no real radio calibration.
+seed: 7                 # Reserved reproducible RNG; baseline has no randomness.
+dt_s: 0.1
+duration_s: 24.0
+graph_interval_s: 0.5   # Must be an integer multiple of dt_s.
+communication_radius_m: 30.0
+plot_bounds_m: [[-10, 125], [-25, 30]]
+# Counts are determined by this list; IDs must be unique.
+agents:
+  - id: ground
+    role: ground_station
+    position_m: [0, 0, 0]
+  - id: mapper_1
+    role: mapper
+    position_m: [70, 0, 10]
+    speed_m_s: 4.0
+    waypoints_m: [[110, 0, 10], [70, 0, 10]]
+  - id: relay_1
+    role: relay
+    position_m: [25, 0, 10]
+    speed_m_s: 1.0
+    waypoints_m: [[25, 8, 10], [25, 0, 10]]
+  - id: relay_2
+    role: relay
+    position_m: [50, 0, 10]
+    speed_m_s: 1.0
+    waypoints_m: [[50, -8, 10], [50, 0, 10]]

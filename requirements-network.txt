@@ -1,0 +1,4 @@
+# Standalone kinematic network simulator; no physics/robotics packages required.
+numpy
+matplotlib
+pyyaml

@@ -6,6 +6,21 @@ permissions:
   contents: read
 
 jobs:
+  network:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: src
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install standalone network dependencies
+        run: python -m pip install -r requirements-network.txt pytest
+      - name: Test network simulator without MuJoCo
+        run: python -m pytest -q tests/test_network.py
+
   test:
     runs-on: ubuntu-latest
     steps:

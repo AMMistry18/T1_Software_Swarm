@@ -5,9 +5,12 @@ and follow-up discussion. It is the starting point for implementation planning.
 Build one milestone at a time, measure its behavior, and review the results
 before moving to the next milestone.
 
-**Current status:** Step 0 flight simulation is implemented. The Python algorithm
-simulator, communication graph, routing, packet transport, planners, mapping,
-and autonomous coordination described below are planned work.
+**Current status:** Step 0 flight simulation is implemented. A separate
+[basic network simulator](network_simulator.md) now implements kinematic
+waypoints, toy bidirectional radius edges, and ground reachability. It is a
+foundation, not the full Step 1 milestone below. Link quality/LOS/ETX, MuJoCo
+network integration, routing, packet transport, planners, mapping, and autonomous
+coordination remain planned work.
 
 Related documents:
 
@@ -367,7 +370,7 @@ The following mapping is planned; names for new files can change during design.
 |---|---|---|
 | `src/tar_swarm/common/` | Shared IDs, geometry, configuration, observations | Config loader exists; drone/world modules are placeholders |
 | `src/tar_swarm/simulation/` | Shared experiment clock, scripted motion, bounded kinematic backend | Proposed new package |
-| `src/tar_swarm/network/` | Link model, graphs, discovery, routing, packets, scheduling | Existing placeholders |
+| `src/tar_swarm/network/` | Link model, graphs, discovery, routing, packets, scheduling | Basic kinematic simulator, radius graph, and reachability implemented; other features planned |
 | `src/tar_swarm/planning/` | Occupancy navigation, A*, trajectory constraints | Proposed new package |
 | `src/tar_swarm/mapping/` | Coverage, occupancy/frontiers, submaps and fusion | Existing placeholders |
 | `src/tar_swarm/strategies/` | Mapper goals, fixed/greedy relays, assignments and mission policies | Existing placeholders |
