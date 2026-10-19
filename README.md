@@ -7,8 +7,12 @@ and one ground station. Agent counts, vehicle parameters, gains, waypoints,
 clocks, gravity, and world geometry are configurable.
 
 A separate **basic network simulator** now supports fixed-step kinematic
-waypoint motion, a toy radius communication graph, ground-station reachability,
-animation, and headless logs/plots. It runs without MuJoCo:
+waypoint motion, a toy radio-range communication graph with obstacles that block
+links, ground-station reachability, fewest-hops routing, and a live window on a
+1 km map (click to send drones to goals; drag, add, and remove network and
+mapping drones; draw obstacles; change and show radio ranges; keep network drones
+in optimal chains; watch each mapper's route; change the speed; choose whether to
+save), plus headless logs/plots. It runs without MuJoCo:
 
 ```bash
 python -m pip install -r requirements-network.txt

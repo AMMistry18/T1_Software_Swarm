@@ -14,8 +14,10 @@ from tar_swarm.metrics.network import connectivity_metrics
 def save_results(simulator, output: str | Path) -> dict:
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
-    config = simulator.config
-    roles = {agent["id"]: agent["role"] for agent in config["agents"]}
+    config = simulator.config  # how the run started (hand edits aren't in it)
+    # Every drone that was ever in the run, including ones removed by hand, so
+    # their older rows still get a role.
+    roles = simulator.roles
     fields = [
         "time_s",
         "agent_id",
@@ -67,9 +69,16 @@ def save_results(simulator, output: str | Path) -> dict:
                 )
     summary = {
         "backend": "speed_limited_kinematics",
-        "link_model": "toy_bidirectional_3d_radius",
+        "link_model": "toy_two_way_3d_range_per_role",
         "seed": config["seed"],
-        "completed": simulator.done,
+        # Reached the config's duration_s (the live window may run past it).
+        "completed": simulator.tick >= simulator.total_steps,
+        # True if anything was changed by hand during the run (drones added,
+        # removed, moved, or given goals; ranges changed). Then
+        # resolved_config.yaml describes only how the run started.
+        "edited_by_hand": simulator.edited,
+        # The ranges in use when the run ended (sliders may have changed them).
+        "radio_range_m_at_end": dict(getattr(simulator.link_model, "range_m", {})),
         "end_time_s": simulator.time_s,
         "dt_s": simulator.dt_s,
         "graph_interval_s": config["graph_interval_s"],

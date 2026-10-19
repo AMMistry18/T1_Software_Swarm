@@ -2,3 +2,4 @@
 numpy
 matplotlib
 pyyaml
+scipy  # Hungarian method for pairing network drones with spots

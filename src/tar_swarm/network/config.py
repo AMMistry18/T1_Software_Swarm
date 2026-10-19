@@ -21,10 +21,37 @@ def step_count(interval: float, dt: float) -> int:
 
 def validate_config(config: dict) -> dict:
     config = deepcopy(config)
-    for key in ("dt_s", "duration_s", "graph_interval_s", "communication_radius_m"):
+    # grid_step_m: the size of one map grid square, for drawing only.
+    for key in ("dt_s", "duration_s", "graph_interval_s", "grid_step_m"):
         value = config[key]
         if not np.isfinite(value) or value <= 0:
             raise ValueError(f"{key} must be positive and finite")
+    # One radio range per kind of drone (see RangeLink in radio.py).
+    ranges = config["radio_range_m"]
+    if not isinstance(ranges, dict) or set(ranges) != {
+        "ground_station",
+        "mapper",
+        "relay",
+    }:
+        raise ValueError("radio_range_m needs ground_station, mapper, and relay")
+    for role, range_m in ranges.items():
+        if not np.isfinite(range_m) or range_m <= 0:
+            raise ValueError(f"radio_range_m.{role} must be positive and finite")
+    # Drones added by hand in the live window fly at these heights and speeds.
+    for role in ("relay", "mapper"):
+        if not np.isfinite(config[f"new_{role}_altitude_m"]):
+            raise ValueError(f"new_{role}_altitude_m must be finite")
+        speed = config[f"new_{role}_speed_m_s"]
+        if not np.isfinite(speed) or speed < 0:
+            raise ValueError(f"new_{role}_speed_m_s must be nonnegative and finite")
+    # Obstacles (optional): boxes [x_min, y_min, x_max, y_max] that block signals.
+    config.setdefault("obstacles_m", [])
+    for box in config["obstacles_m"]:
+        box = np.asarray(box, dtype=float)
+        if box.shape != (4,) or not np.isfinite(box).all():
+            raise ValueError("Each obstacle must be [x_min, y_min, x_max, y_max]")
+        if box[0] >= box[2] or box[1] >= box[3]:
+            raise ValueError("Each obstacle needs x_min < x_max and y_min < y_max")
     step_count(config["duration_s"], config["dt_s"])
     step_count(config["graph_interval_s"], config["dt_s"])
     if not isinstance(config["seed"], int) or config["seed"] < 0:

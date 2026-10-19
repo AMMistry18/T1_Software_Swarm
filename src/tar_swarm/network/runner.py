@@ -37,7 +37,10 @@ def main(argv=None):
     else:
         from tar_swarm.network.visualization import animate
 
-        animate(simulator)
+        # animate returns False if "save results when closed" was unchecked.
+        if not animate(simulator):
+            print("Results not saved (unchecked in the window).")
+            return
     summary = save_results(simulator, output)
     from tar_swarm.network.visualization import save_plot
 
