@@ -1,4 +1,16 @@
-"""Small standalone-network config, reusing the shared YAML reader."""
+"""Load and check the network simulator's settings file (configs/network.yaml).
+
+How a scene gets from the YAML file into a running simulation:
+1. load_config(path) reads the file with the team's shared read_yaml, which turns
+   the YAML text into a plain Python dict (setting name -> value).
+2. validate_config(dict) checks every setting and fills in the optional ones, so a
+   typo stops the run right away with a clear message instead of crashing halfway.
+3. runner.py hands the checked dict to Simulator(config), which starts the run.
+   This file never starts the simulation itself.
+
+common/config.py has its own load_config for the team's other simulators; only
+read_yaml is shared.
+"""
 
 from copy import deepcopy
 from pathlib import Path
@@ -9,7 +21,17 @@ from tar_swarm.common.config import read_yaml
 
 
 def step_count(interval: float, dt: float) -> int:
+    """How many simulation steps of `dt` seconds fit in `interval` seconds.
+
+    interval: a length of time in seconds (duration_s or graph_interval_s).
+    dt: the length of one step in seconds (dt_s).
+    Returns a whole number of steps: 300 s / 0.1 s -> 3000, 0.5 s / 0.1 s -> 5.
+    Raises ValueError unless `interval` is a whole number of steps (at least 1),
+    because the simulator's clock only moves in whole steps.
+    """
     ratio = interval / dt
+    # Computers store decimals slightly off: 0.3 / 0.1 gives 2.9999999999999996,
+    # not 3. isclose accepts anything within 1e-9 of a whole number.
     if (
         not np.isfinite(ratio)
         or ratio < 1
@@ -20,6 +42,17 @@ def step_count(interval: float, dt: float) -> int:
 
 
 def validate_config(config: dict) -> dict:
+    """Check a scene's settings and return a checked copy.
+
+    config: the settings as a dict, straight from a YAML file (or written in
+      Python, like SMALL_DEMO in tests/test_network.py).
+    Returns a new dict with the same settings, plus defaults for the optional
+    ones: obstacles_m, and each drone's active, speed_m_s, and waypoints_m.
+    Raises ValueError, saying which setting is wrong, if a value is out of
+    range. A required setting that is missing entirely raises KeyError instead.
+    """
+    # deepcopy copies everything, nested lists too, so filling in defaults below
+    # never changes the dict the caller passed in.
     config = deepcopy(config)
     # grid_step_m: the size of one map grid square, for drawing only.
     for key in ("dt_s", "duration_s", "graph_interval_s", "grid_step_m"):
@@ -45,6 +78,7 @@ def validate_config(config: dict) -> dict:
         if not np.isfinite(speed) or speed < 0:
             raise ValueError(f"new_{role}_speed_m_s must be nonnegative and finite")
     # Obstacles (optional): boxes [x_min, y_min, x_max, y_max] that block signals.
+    # setdefault adds the key with [] only if the file left it out.
     config.setdefault("obstacles_m", [])
     for box in config["obstacles_m"]:
         box = np.asarray(box, dtype=float)
@@ -52,10 +86,14 @@ def validate_config(config: dict) -> dict:
             raise ValueError("Each obstacle must be [x_min, y_min, x_max, y_max]")
         if box[0] >= box[2] or box[1] >= box[3]:
             raise ValueError("Each obstacle needs x_min < x_max and y_min < y_max")
+    # The run's length and the time between link checks must each be a whole
+    # number of steps (step_count raises if not; the counts aren't needed here).
     step_count(config["duration_s"], config["dt_s"])
     step_count(config["graph_interval_s"], config["dt_s"])
+    # seed: saved for random effects later; the simulation has no randomness yet.
     if not isinstance(config["seed"], int) or config["seed"] < 0:
         raise ValueError("seed must be a nonnegative integer")
+    # plot_bounds_m: the map's edges in meters, [[x_min, x_max], [y_min, y_max]].
     bounds = np.asarray(config["plot_bounds_m"], dtype=float)
     if (
         bounds.shape != (2, 2)
@@ -63,6 +101,7 @@ def validate_config(config: dict) -> dict:
         or np.any(bounds[:, 0] >= bounds[:, 1])
     ):
         raise ValueError("plot_bounds_m must be [[xmin, xmax], [ymin, ymax]]")
+    # The drones: every ID used once, exactly one base, at least one mapper.
     agents = config["agents"]
     ids = [agent["id"] for agent in agents]
     if (
@@ -75,10 +114,11 @@ def validate_config(config: dict) -> dict:
         raise ValueError("Exactly one ground_station is required")
     if not any(agent["role"] == "mapper" for agent in agents):
         raise ValueError("At least one mapper is required")
+    # Each drone on its own: fill in the optional settings, then check them.
     for agent in agents:
         if agent["role"] not in {"ground_station", "mapper", "relay"}:
             raise ValueError("Unknown agent role")
-        agent.setdefault("active", True)
+        agent.setdefault("active", True)  # active: false = present but switched off
         agent.setdefault("speed_m_s", 0.0)
         agent.setdefault("waypoints_m", [])
         if not isinstance(agent["active"], bool):
@@ -105,4 +145,7 @@ def validate_config(config: dict) -> dict:
 
 
 def load_config(path: str | Path) -> dict:
+    """Read a scene's YAML file and return its checked settings.
+    Returns the dict from validate_config, ready for Simulator(config).
+    """
     return validate_config(read_yaml(path))
