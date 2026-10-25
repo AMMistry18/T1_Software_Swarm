@@ -7,6 +7,8 @@ from typing import Any
 import numpy as np
 import yaml
 
+from tar_swarm.sensors.lidar import validate_lidar_params
+
 
 def read_yaml(path: str | Path) -> dict[str, Any]:
     with Path(path).open(encoding="utf-8") as stream:
@@ -24,6 +26,8 @@ def load_config(path: str | Path, world: str | Path | None = None) -> dict[str, 
         ),
         "mission": read_yaml(path.parent / settings["mission_file"]),
     }
+    if "sensors_file" in settings:
+        result["sensors"] = read_yaml(path.parent / settings["sensors_file"])
     validate_config(result)
     return deepcopy(result)
 
@@ -97,6 +101,11 @@ def validate_config(config: dict[str, Any]) -> None:
         names = [c["name"] for c in vehicle["components"]]
         if len(set(names)) != len(names):
             raise ValueError("Component names must be unique within a vehicle")
+    for vehicle_type, lidar in config.get("sensors", {}).get("lidar", {}).items():
+        if vehicle_type not in config["vehicles"]:
+            raise ValueError(f"LiDAR configured for unknown vehicle: {vehicle_type}")
+        validate_lidar_params(lidar)
+        interval_steps(1 / lidar["rate_hz"], dt)
     agents = config["mission"]["agents"]
     ids = [agent["id"] for agent in agents]
     if not ids or len(set(ids)) != len(ids):

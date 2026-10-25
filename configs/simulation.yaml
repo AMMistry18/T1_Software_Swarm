@@ -10,3 +10,4 @@ seed: 42
 vehicles_file: vehicles.yaml
 world_file: worlds/outdoor.yaml
 mission_file: missions/step0.yaml
+sensors_file: sensors.yaml

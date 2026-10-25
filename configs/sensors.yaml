@@ -1,0 +1,13 @@
+# Simulated sensor settings, keyed by sensor then vehicle type.
+# Every number here is an unmeasured placeholder unless its comment cites a source.
+lidar:
+  mapping_drone:
+    site: lidar_down               # Site suffix; full name is <agent_id>_lidar_down
+    rate_hz: 10.0                  # TODO(source): L2 frame rate unverified
+    points_per_scan: 6400          # 64,000 effective pts/s / rate_hz (vendor store page)
+    max_polar_deg: 90.0            # Angle from sensor axis; 96.0 = negative angle mode
+    min_range_m: 0.05              # Vendor blind zone (Unitree L2 store page)
+    max_range_m: 30.0              # Vendor range (Unitree L2 store page)
+    range_noise_m: 0.02            # TODO(source): placeholder accuracy
+    dropout_probability: 0.0       # TODO(source): placeholder
+    pattern: random_uniform        # TODO(source): real non-repetitive pattern unpublished

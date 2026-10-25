@@ -16,6 +16,12 @@ from tar_swarm.control.mission import WaypointMission
 from tar_swarm.evaluation.logging import sample, save_run
 from tar_swarm.mujoco.flight import FlightSimulation
 from tar_swarm.mujoco.renderer import configure_viewer, draw_overlays, save_snapshot
+from tar_swarm.sensors.lidar import (
+    apply_noise,
+    load_lidar_params,
+    scan_directions,
+    to_points,
+)
 
 
 def run_scenario(
@@ -46,6 +52,17 @@ def run_scenario(
     missions = {a["id"]: WaypointMission(a) for a in config["mission"]["agents"]}
     targets = {name: mission.sample(0) for name, mission in missions.items()}
     trails: dict[str, list[np.ndarray]] = {name: [] for name in missions}
+    lidars = {
+        a["id"]: params
+        for a in config["mission"]["agents"]
+        if (params := load_lidar_params(config.get("sensors"), a["vehicle"]))
+    }
+    lidar_steps = {
+        name: interval_steps(1 / params.rate_hz, dt) for name, params in lidars.items()
+    }
+    lidar_rng = np.random.default_rng(settings["seed"])
+    lidar_scans: list[dict[str, Any]] = []
+    lidar_truth: list[dict[str, Any]] = []
     rows, control_rows = [], []
     outputs = {}
     context = nullcontext(None)
@@ -97,6 +114,29 @@ def run_scenario(
                             int(simulation.data.ncon),
                         )
                     )
+            for name, params in lidars.items():
+                if tick % lidar_steps[name] == 0:
+                    directions = scan_directions(params, lidar_rng)
+                    truth, geom_id, normal = simulation.cast_rays(
+                        name, f"{name}_{params.site}", directions, params.max_range_m
+                    )
+                    measured = apply_noise(truth, params, lidar_rng)
+                    valid = np.isfinite(measured)
+                    lidar_scans.append(
+                        {
+                            "time_s": sim_time,
+                            "vehicle_id": name,
+                            "points": to_points(directions, measured),
+                        }
+                    )
+                    # Oracles for tests and checks only; estimators must not read.
+                    lidar_truth.append(
+                        {
+                            "true_distance_m": truth[valid],
+                            "geom_id": geom_id[valid],
+                            "normal_world": normal[valid],
+                        }
+                    )
             if viewer and tick % clocks["visualization"] == 0:
                 with viewer.lock():
                     viewer.user_scn.ngeom = 0
@@ -112,7 +152,15 @@ def run_scenario(
                     time.sleep(min(delay, dt))
     report = None
     if output:
-        report = save_run(output, rows, config, simulation.xml, control_rows, completed)
+        report = save_run(
+            output,
+            rows,
+            config,
+            simulation.xml,
+            control_rows,
+            completed,
+            (lidar_scans, lidar_truth) if lidars else None,
+        )
         if plots:
             from tar_swarm.evaluation.plots import plot_run
 
@@ -123,6 +171,8 @@ def run_scenario(
         "simulation": simulation,
         "rows": rows,
         "controls": control_rows,
+        "lidar": lidar_scans,
+        "lidar_truth": lidar_truth,
         "metrics": report,
         "completed": completed,
     }

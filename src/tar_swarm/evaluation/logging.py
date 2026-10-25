@@ -90,6 +90,33 @@ def metrics(rows: list[dict[str, Any]], config: dict[str, Any]) -> dict[str, Any
     return result
 
 
+def save_lidar(
+    directory: Path, scans: list[dict[str, Any]], truth: list[dict[str, Any]]
+) -> None:
+    """Flat point arrays plus per-scan start indices (scan i ends at start i+1).
+
+    lidar_truth.npz holds oracles aligned point-for-point with lidar_scans.npz;
+    it is for tests and check scripts, never for estimators.
+    """
+    counts = [len(scan["points"]) for scan in scans]
+    starts = np.concatenate([[0], np.cumsum(counts)[:-1]]).astype(np.int64)
+    np.savez_compressed(
+        directory / "lidar_scans.npz",
+        time_s=np.array([scan["time_s"] for scan in scans]),
+        vehicle_id=np.array([scan["vehicle_id"] for scan in scans]),
+        scan_start=starts,
+        points=np.concatenate([scan["points"] for scan in scans]).astype(np.float32),
+    )
+    np.savez_compressed(
+        directory / "lidar_truth.npz",
+        true_distance_m=np.concatenate([t["true_distance_m"] for t in truth]),
+        geom_id=np.concatenate([t["geom_id"] for t in truth]),
+        normal_world=np.concatenate([t["normal_world"] for t in truth]).astype(
+            np.float32
+        ),
+    )
+
+
 def save_run(
     directory: Path,
     rows: list[dict[str, Any]],
@@ -97,8 +124,11 @@ def save_run(
     xml: str,
     controls: list[dict[str, Any]],
     completed: bool,
+    lidar: tuple[list[dict[str, Any]], list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     directory.mkdir(parents=True, exist_ok=False)
+    if lidar:
+        save_lidar(directory, *lidar)
     with (directory / "states.csv").open("w", newline="", encoding="utf-8") as stream:
         writer = csv.DictWriter(stream, fieldnames=FIELDS)
         writer.writeheader()
