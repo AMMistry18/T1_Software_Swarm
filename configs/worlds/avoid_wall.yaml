@@ -1,0 +1,8 @@
+# AV4: large flat obstacle across the flight path. Lane is y = 0, flight along +x
+# at 2 m; the obstacle face is at x = 12. Ground covers the farthest flight
+# position (x = 30) plus the 30 m L2 range, with margin.
+name: avoid_wall
+ground_half_size_m: 65
+ground_station: {position_m: [-40, -40, 0.4], size_m: [0.8, 0.6, 0.8]}
+obstacles:
+  - {name: wall, position_m: [12.1, 0, 3], size_m: [0.2, 6, 6]}

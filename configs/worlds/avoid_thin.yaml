@@ -1,0 +1,8 @@
+# AV4: wire-like obstacle (2 cm square section) across the path at the 2 m flight
+# height; face at x = 12. Free-floating on purpose: support posts near the lane
+# would fall inside the avoidance cone and be detected instead of the wire.
+name: avoid_thin
+ground_half_size_m: 65
+ground_station: {position_m: [-40, -40, 0.4], size_m: [0.8, 0.6, 0.8]}
+obstacles:
+  - {name: wire, position_m: [12.01, 0, 2.0], size_m: [0.02, 6, 0.02]}

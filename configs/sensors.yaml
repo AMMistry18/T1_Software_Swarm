@@ -11,3 +11,33 @@ lidar:
     range_noise_m: 0.02            # TODO(source): placeholder accuracy
     dropout_probability: 0.0       # TODO(source): placeholder
     pattern: random_uniform        # TODO(source): real non-repetitive pattern unpublished
+
+# Benewake TF-Luna forward rangefinder. "Datasheet" = Benewake TF-Luna product
+# manual (ranging specs table); TODO(source): pin the manual revision in the docs.
+rangefinder:
+  relay_drone:
+    enabled: true
+    site: luna_fwd                 # Site suffix; full name is <agent_id>_luna_fwd
+    rate_hz: 100.0                 # Datasheet default frame rate (1-250 Hz configurable)
+    min_range_m: 0.2               # Datasheet minimum range
+    max_range_m: 8.0               # Datasheet, 90% reflectivity, 0 klux (ray-cast limit)
+    effective_max_range_m: 4.0     # TODO(source): outdoor sunlight / low-reflectivity cap
+    noise_sigma_near_m: 0.06       # Datasheet accuracy ±6 cm (0.2-3 m); TODO(source): bound used as 1-sigma
+    noise_sigma_far_fraction: 0.02 # Datasheet accuracy ±2% (3-8 m); TODO(source): bound used as 1-sigma
+    noise_switch_m: 3.0            # Datasheet accuracy band boundary
+    dropout_probability: 0.0       # TODO(source): placeholder
+    num_rays: 1                    # Model choice; >1 approximates the beam footprint
+    beam_half_angle_deg: 1.0       # Datasheet FoV 2 deg; only used when num_rays > 1
+  mapping_drone:                   # Optional second instance; off by default
+    enabled: false
+    site: luna_fwd
+    rate_hz: 100.0                 # Datasheet default frame rate
+    min_range_m: 0.2               # Datasheet minimum range
+    max_range_m: 8.0               # Datasheet, 90% reflectivity, 0 klux
+    effective_max_range_m: 4.0     # TODO(source): outdoor cap
+    noise_sigma_near_m: 0.06       # Datasheet ±6 cm; TODO(source): bound used as 1-sigma
+    noise_sigma_far_fraction: 0.02 # Datasheet ±2%; TODO(source): bound used as 1-sigma
+    noise_switch_m: 3.0            # Datasheet accuracy band boundary
+    dropout_probability: 0.0       # TODO(source): placeholder
+    num_rays: 1                    # Model choice
+    beam_half_angle_deg: 1.0       # Datasheet FoV 2 deg

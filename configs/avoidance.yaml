@@ -1,0 +1,26 @@
+# Speed-limit / stop-and-hold avoidance, keyed by vehicle type. Off by default so
+# existing missions run unchanged. Every number is an unmeasured placeholder.
+relay_drone:
+  enabled: false
+  sources: [rangefinder]           # TF-Luna as one forward sector
+  a_brake_m_s2: 2.0                # TODO(source): below the 4 m/s^2 controller limit
+  d_stop_m: 1.0                    # TODO(source): stop distance; keep overlays.yaml d_stop_m equal
+  cone_half_angle_deg: 30.0        # TODO(source): sectors considered around the motion direction
+  control_delay_s: 0.02            # TODO(source): two controller ticks
+  stale_timeout_s: 0.3             # TODO(source): data older than this slows the vehicle
+  stale_speed_m_s: 0.5             # TODO(source): speed while data is stale
+  stale_hold_after_s: 0.5          # TODO(source): stale this much longer -> hold
+  catchup_gain: 1.0                # TODO(source): 1/s, rejoin rate after a hold
+  rangefinder_latch_m: 0.5         # TODO(source): no return after a reading below this = too close
+mapping_drone:
+  enabled: false
+  sources: [l2]                    # Needs perception.yaml l2_obstacles for mapping_drone
+  a_brake_m_s2: 2.0                # TODO(source): below the 3 m/s^2 controller limit
+  d_stop_m: 1.0                    # TODO(source)
+  cone_half_angle_deg: 30.0        # TODO(source)
+  control_delay_s: 0.02            # TODO(source)
+  stale_timeout_s: 0.3             # TODO(source): L2 period is 0.1 s
+  stale_speed_m_s: 0.5             # TODO(source)
+  stale_hold_after_s: 0.5          # TODO(source)
+  catchup_gain: 1.0                # TODO(source)
+  rangefinder_latch_m: 0.5         # TODO(source): used only with the rangefinder source

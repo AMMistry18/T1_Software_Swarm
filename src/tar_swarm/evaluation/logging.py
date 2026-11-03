@@ -117,6 +117,71 @@ def save_lidar(
     )
 
 
+def save_rangefinder(
+    directory: Path, readings: list[dict[str, Any]], truth: list[dict[str, Any]]
+) -> None:
+    """One row per reading; distance_m is NaN for no return.
+
+    rangefinder_truth.npz holds oracles aligned row-for-row with rangefinder.npz
+    (true nearest distance, -1 = no hit, geom id and sensor site pose); it is
+    for tests and check scripts, never for perception or avoidance.
+    """
+    np.savez_compressed(
+        directory / "rangefinder.npz",
+        time_s=np.array([r["time_s"] for r in readings]),
+        vehicle_id=np.array([r["vehicle_id"] for r in readings]),
+        distance_m=np.array([r["distance_m"] for r in readings]),
+    )
+    np.savez_compressed(
+        directory / "rangefinder_truth.npz",
+        true_distance_m=np.array([t["true_distance_m"] for t in truth]),
+        geom_id=np.array([t["geom_id"] for t in truth], dtype=np.int32),
+        site_position_world=np.array([t["site_position_world"] for t in truth]),
+        site_rotation_world=np.array([t["site_rotation_world"] for t in truth]),
+    )
+
+
+def save_l2_obstacles(directory: Path, records: list[dict[str, Any]]) -> None:
+    """Sector output per processed scan, plus the ground mask for its points.
+
+    scan_index points into lidar_scans.npz; the ground mask of record k is
+    ground_mask[mask_start[k]:mask_start[k + 1]], aligned with that scan's points.
+    """
+    counts = [len(r["ground_mask"]) for r in records]
+    np.savez_compressed(
+        directory / "l2_obstacles.npz",
+        time_s=np.array([r["time_s"] for r in records]),
+        vehicle_id=np.array([r["vehicle_id"] for r in records]),
+        scan_index=np.array([r["scan_index"] for r in records], dtype=np.int64),
+        sector_distance_m=np.array([r["sector_distance_m"] for r in records]),
+        sector_count=np.array([r["sector_count"] for r in records]),
+        ground_found=np.array([r["ground_normal"] is not None for r in records]),
+        ground_normal=np.array(
+            [
+                r["ground_normal"] if r["ground_normal"] is not None else [np.nan] * 3
+                for r in records
+            ]
+        ),
+        ground_offset=np.array([r["ground_offset"] for r in records]),
+        mask_start=np.concatenate([[0], np.cumsum(counts)[:-1]]).astype(np.int64),
+        ground_mask=np.concatenate([r["ground_mask"] for r in records]),
+    )
+
+
+def save_avoidance(directory: Path, records: list[dict[str, Any]]) -> None:
+    """Commanded vs limited velocity per controller tick (world frame)."""
+    np.savez_compressed(
+        directory / "avoidance.npz",
+        time_s=np.array([r["time_s"] for r in records]),
+        vehicle_id=np.array([r["vehicle_id"] for r in records]),
+        commanded_velocity=np.array([r["commanded_velocity"] for r in records]),
+        limited_velocity=np.array([r["limited_velocity"] for r in records]),
+        speed_limit_m_s=np.array([r["speed_limit_m_s"] for r in records]),
+        status=np.array([r["status"] for r in records]),
+        reference_position=np.array([r["reference_position"] for r in records]),
+    )
+
+
 def save_run(
     directory: Path,
     rows: list[dict[str, Any]],
@@ -125,10 +190,19 @@ def save_run(
     controls: list[dict[str, Any]],
     completed: bool,
     lidar: tuple[list[dict[str, Any]], list[dict[str, Any]]] | None = None,
+    rangefinder: tuple[list[dict[str, Any]], list[dict[str, Any]]] | None = None,
+    l2_obstacles: list[dict[str, Any]] | None = None,
+    avoidance: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     directory.mkdir(parents=True, exist_ok=False)
     if lidar:
         save_lidar(directory, *lidar)
+    if rangefinder:
+        save_rangefinder(directory, *rangefinder)
+    if l2_obstacles:
+        save_l2_obstacles(directory, l2_obstacles)
+    if avoidance:
+        save_avoidance(directory, avoidance)
     with (directory / "states.csv").open("w", newline="", encoding="utf-8") as stream:
         writer = csv.DictWriter(stream, fieldnames=FIELDS)
         writer.writeheader()

@@ -1,0 +1,7 @@
+# AV4: pole (0.1 m diameter) centred 0.3 m left of the TF-Luna axis (lane y = 0).
+# Expected to be missed by the single-ray TF-Luna; documents that limit.
+name: avoid_offaxis
+ground_half_size_m: 65
+ground_station: {position_m: [-40, -40, 0.4], size_m: [0.8, 0.6, 0.8]}
+obstacles:
+  - {name: pole, shape: cylinder, position_m: [12.05, 0.3, 3], size_m: [0.1, 0.1, 6]}

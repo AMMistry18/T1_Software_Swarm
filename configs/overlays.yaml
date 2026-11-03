@@ -1,0 +1,15 @@
+# Viewer sensor overlays, loaded only with --overlay. Each overlay toggles separately.
+rangefinder_beam:
+  enabled: true
+  d_stop_m: 1.0                    # Display only; keep equal to avoidance.yaml d_stop_m
+lidar_points:
+  enabled: true
+  max_points: 2000                 # Viewer geom budget; obstacle points are drawn first
+  show_ground_points: false        # Display only: true also draws removed ground points
+sector_ring:
+  enabled: true
+  d_stop_m: 1.0                    # Display only; keep equal to avoidance.yaml d_stop_m
+  no_return_length_m: 0.3          # Display only: stub length for sectors with no return
+velocity_arrows:
+  enabled: true
+  scale_s: 1.0                     # Display only: arrow length = velocity x this time

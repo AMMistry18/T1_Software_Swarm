@@ -1,0 +1,13 @@
+# Perception settings, keyed by stage then vehicle type.
+# Every number here is an unmeasured placeholder unless its comment cites a source.
+l2_obstacles:
+  mapping_drone:
+    enabled: false                 # Off by default; --overlay still computes it for display
+    num_sectors: 72                # Design choice: 5 deg horizontal sectors
+    band_below_m: 0.5              # TODO(source): clearance margin below flight altitude
+    band_above_m: 0.5              # TODO(source): clearance margin above flight altitude
+    ransac_iterations: 100         # TODO(source): tuning; not yet swept
+    ransac_threshold_m: 0.1        # TODO(source): ~5x the placeholder L2 range noise
+    ground_max_tilt_deg: 15.0      # TODO(source): steepest terrain treated as ground
+    ground_min_points: 50          # TODO(source): fewer inliers = no ground found
+    min_range_m: 0.3               # TODO(source): ignore returns inside the airframe

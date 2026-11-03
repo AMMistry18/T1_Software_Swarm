@@ -1,0 +1,6 @@
+# AV4: narrow vertical pole (0.1 m diameter) on the flight path; face at x = 12.
+name: avoid_pole
+ground_half_size_m: 65
+ground_station: {position_m: [-40, -40, 0.4], size_m: [0.8, 0.6, 0.8]}
+obstacles:
+  - {name: pole, shape: cylinder, position_m: [12.05, 0, 3], size_m: [0.1, 0.1, 6]}

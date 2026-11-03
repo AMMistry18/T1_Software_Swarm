@@ -7,7 +7,10 @@ from typing import Any
 import numpy as np
 import yaml
 
+from tar_swarm.control.avoidance import validate_avoidance_params
+from tar_swarm.perception.obstacles import validate_obstacle_params
 from tar_swarm.sensors.lidar import validate_lidar_params
+from tar_swarm.sensors.rangefinder import validate_rangefinder_params
 
 
 def read_yaml(path: str | Path) -> dict[str, Any]:
@@ -28,6 +31,10 @@ def load_config(path: str | Path, world: str | Path | None = None) -> dict[str, 
     }
     if "sensors_file" in settings:
         result["sensors"] = read_yaml(path.parent / settings["sensors_file"])
+    if "perception_file" in settings:
+        result["perception"] = read_yaml(path.parent / settings["perception_file"])
+    if "avoidance_file" in settings:
+        result["avoidance"] = read_yaml(path.parent / settings["avoidance_file"])
     validate_config(result)
     return deepcopy(result)
 
@@ -106,6 +113,43 @@ def validate_config(config: dict[str, Any]) -> None:
             raise ValueError(f"LiDAR configured for unknown vehicle: {vehicle_type}")
         validate_lidar_params(lidar)
         interval_steps(1 / lidar["rate_hz"], dt)
+    sensors = config.get("sensors", {})
+    for vehicle_type, luna in sensors.get("rangefinder", {}).items():
+        if vehicle_type not in config["vehicles"]:
+            raise ValueError(
+                f"Rangefinder configured for unknown vehicle: {vehicle_type}"
+            )
+        validate_rangefinder_params(luna)
+        interval_steps(1 / luna["rate_hz"], dt)
+        names = [c["name"] for c in config["vehicles"][vehicle_type]["components"]]
+        if luna["enabled"] and "tf_luna" not in names:
+            raise ValueError(f"Rangefinder enabled but {vehicle_type} has no tf_luna")
+    perception = config.get("perception", {})
+    for vehicle_type, obstacles in perception.get("l2_obstacles", {}).items():
+        if vehicle_type not in config["vehicles"]:
+            raise ValueError(
+                f"Obstacles configured for unknown vehicle: {vehicle_type}"
+            )
+        if vehicle_type not in sensors.get("lidar", {}):
+            raise ValueError(f"Obstacles need a LiDAR on {vehicle_type}")
+        validate_obstacle_params(obstacles)
+    for vehicle_type, avoid in (config.get("avoidance") or {}).items():
+        if vehicle_type not in config["vehicles"]:
+            raise ValueError(
+                f"Avoidance configured for unknown vehicle: {vehicle_type}"
+            )
+        validate_avoidance_params(avoid)
+        if not avoid["enabled"]:
+            continue
+        if "l2" in avoid["sources"] and vehicle_type not in perception.get(
+            "l2_obstacles", {}
+        ):
+            raise ValueError(f"Avoidance l2 source needs l2_obstacles: {vehicle_type}")
+        luna = sensors.get("rangefinder", {}).get(vehicle_type, {})
+        if "rangefinder" in avoid["sources"] and not luna.get("enabled"):
+            raise ValueError(
+                f"Avoidance rangefinder source needs a rangefinder: {vehicle_type}"
+            )
     agents = config["mission"]["agents"]
     ids = [agent["id"] for agent in agents]
     if not ids or len(set(ids)) != len(ids):
@@ -149,3 +193,8 @@ def validate_config(config: dict[str, Any]) -> None:
             or not np.isfinite(obstacle["position_m"]).all()
         ):
             raise ValueError("Obstacle positions must be finite 3-vectors")
+        shape = obstacle.get("shape", "box")
+        if shape not in ("box", "cylinder"):
+            raise ValueError(f"Unknown obstacle shape: {shape}")
+        if shape == "cylinder" and obstacle["size_m"][0] != obstacle["size_m"][1]:
+            raise ValueError("Cylinder obstacles need equal x and y size (diameter)")

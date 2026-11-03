@@ -5,6 +5,7 @@ from xml.etree import ElementTree as ET
 
 import numpy as np
 
+from tar_swarm.sensors.rangefinder import load_rangefinder_params
 from tar_swarm.vehicles.model import components, mass_properties, rotor_positions
 
 
@@ -75,13 +76,16 @@ def build_scene(config: dict[str, Any]) -> str:
         rgba="0.9 0.7 0.1 1",
     )
     for obstacle in world["obstacles"]:
+        # size_m is the full extent; a cylinder is upright with diameter size_m[0].
+        half = np.array(obstacle["size_m"]) / 2
+        cylinder = obstacle.get("shape", "box") == "cylinder"
         ET.SubElement(
             wb,
             "geom",
             name=obstacle["name"],
-            type="box",
+            type="cylinder" if cylinder else "box",
             pos=vector(obstacle["position_m"]),
-            size=vector(np.array(obstacle["size_m"]) / 2),
+            size=vector(half[[0, 2]] if cylinder else half),
             rgba="0.55 0.52 0.49 1",
         )
     actuators = ET.SubElement(root, "actuator")
@@ -185,6 +189,19 @@ def build_scene(config: dict[str, Any]) -> str:
                 zaxis="0 0 -1",
                 size="0.01",
                 rgba="0 1 1 1",
+            )
+        luna = load_rangefinder_params(config.get("sensors"), agent["vehicle"])
+        if luna:
+            # Forward mount: site +z is body +x.
+            part = next(c for c in components(vehicle) if c.name == "tf_luna")
+            ET.SubElement(
+                body,
+                "site",
+                name=f"{name}_{luna.site}",
+                pos=vector(part.position - center),
+                zaxis="1 0 0",
+                size="0.004",
+                rgba="1 0.2 0.2 1",
             )
     ET.indent(root)
     return ET.tostring(root, encoding="unicode")

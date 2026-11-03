@@ -1,0 +1,5 @@
+# AV4: no obstacles along the lane; false-stop check.
+name: clear_path
+ground_half_size_m: 65
+ground_station: {position_m: [-40, -40, 0.4], size_m: [0.8, 0.6, 0.8]}
+obstacles: []

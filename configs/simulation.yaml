@@ -11,3 +11,5 @@ vehicles_file: vehicles.yaml
 world_file: worlds/outdoor.yaml
 mission_file: missions/step0.yaml
 sensors_file: sensors.yaml
+perception_file: perception.yaml
+avoidance_file: avoidance.yaml
