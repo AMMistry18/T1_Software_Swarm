@@ -1,5 +1,7 @@
 """AV5 metrics, sweep criteria, check plots and GIF recording."""
 
+import subprocess
+import sys
 from pathlib import Path
 
 import mujoco
@@ -28,6 +30,30 @@ from tar_swarm.mujoco.runner import run_scenario
 
 ROOT = Path(__file__).resolve().parents[1]
 SETTINGS = load_overlay_settings(ROOT / "configs/overlays.yaml")
+
+
+def can_render() -> bool:
+    """Probe offscreen OpenGL in a child process.
+
+    On a headless machine (CI) creating a renderer can abort the whole
+    process, which pytest cannot catch, so it is tried in a subprocess first.
+    """
+    probe = (
+        "import mujoco; m = mujoco.MjModel.from_xml_string('<mujoco/>'); "
+        "r = mujoco.Renderer(m, 8, 8); r.render(); r.close()"
+    )
+    try:
+        done = subprocess.run(
+            [sys.executable, "-c", probe], capture_output=True, timeout=120
+        )
+    except subprocess.TimeoutExpired:
+        return False
+    return done.returncode == 0
+
+
+needs_render = pytest.mark.skipif(
+    not can_render(), reason="offscreen OpenGL rendering unavailable"
+)
 
 
 def test_reaction_stop_and_intervention_known_answers():
@@ -102,6 +128,7 @@ def test_cases_and_summary():
     assert groups[0]["min_clearance_m"] == 0
 
 
+@needs_render
 def test_gif_recorder(tmp_path):
     model = mujoco.MjModel.from_xml_string(
         "<mujoco><worldbody><geom type='sphere' size='0.1'/></worldbody></mujoco>"
@@ -122,6 +149,7 @@ def test_gif_recorder(tmp_path):
         GifRecorder(model, path)
 
 
+@needs_render
 def test_record_does_not_change_the_run(tmp_path):
     config = load_config(ROOT / "configs/simulation.yaml")
     config["simulation"]["duration_s"] = 0.3
@@ -154,10 +182,15 @@ def test_wall_metrics(wall_run):
     assert metrics["ground_edge_margin_m"] > 0
 
 
-def test_check_plot_and_replay_clip(wall_run, tmp_path):
+def test_check_plot(wall_run, tmp_path):
     directory, _ = wall_run
     figure = plot_avoidance(directory, tmp_path / "check.png")
     assert figure.stat().st_size > 10_000
+
+
+@needs_render
+def test_replay_clip(wall_run, tmp_path):
+    directory, _ = wall_run
     clip = record_replay(
         directory, tmp_path / "clip.gif", SETTINGS, start_s=16.0, end_s=17.0
     )
