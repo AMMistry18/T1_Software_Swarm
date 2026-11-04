@@ -15,7 +15,6 @@ import numpy as np
 
 from tar_swarm.network.connectivity import reachable_from
 from tar_swarm.network.graph import GraphSnapshot, build_graph
-from tar_swarm.network.radio import LinkModel, RadiusLink
 
 
 class PlanningLinkModel(Protocol):
@@ -39,9 +38,6 @@ class ConservativeDistanceLink:
     def usable(self, first: np.ndarray, second: np.ndarray) -> bool:
         return bool(np.linalg.norm(first - second) <= self.usable_range_m)
 
-    def as_network_link(self) -> LinkModel:
-        return RadiusLink(self.usable_range_m)
-
 
 @dataclass(frozen=True)
 class MeasuredLinkHook:
@@ -58,27 +54,44 @@ class MeasuredLinkHook:
         )
 
 
+@dataclass
+class _NetworkAdapter:
+    """Adapt PlanningLinkModel to the post-merge network LinkModel API.
+
+    network.graph.build_graph now calls
+    ``usable(first_role, second_role, first, second)``. Planning keeps a
+    position-only model; roles are accepted and ignored here.
+    """
+
+    inner: PlanningLinkModel
+
+    def usable(
+        self,
+        first_role: str,
+        second_role: str,
+        first: np.ndarray,
+        second: np.ndarray,
+    ) -> bool:
+        _ = first_role, second_role
+        return self.inner.usable(first, second)
+
+
 def build_connectivity(
     positions: Mapping[str, np.ndarray],
     active: Mapping[str, bool],
     time_s: float,
     link_model: PlanningLinkModel,
     ground_id: str,
+    roles: Mapping[str, str] | None = None,
 ) -> tuple[GraphSnapshot, frozenset[str]]:
     """Build undirected availability graph and ground-reachable node set."""
-    # Adapt to network.graph which expects LinkModel.usable
-    adapter = _Adapter(link_model)
-    graph = build_graph(dict(positions), dict(active), time_s, adapter)
+    if roles is None:
+        roles = {node_id: "unknown" for node_id in positions}
+        roles[ground_id] = "ground_station"
+    adapter = _NetworkAdapter(link_model)
+    graph = build_graph(dict(positions), dict(active), time_s, adapter, dict(roles))
     reachable = reachable_from(graph, ground_id)
     return graph, reachable
-
-
-@dataclass
-class _Adapter:
-    inner: PlanningLinkModel
-
-    def usable(self, first: np.ndarray, second: np.ndarray) -> bool:
-        return self.inner.usable(first, second)
 
 
 def filter_forwarding_nodes(
@@ -121,7 +134,6 @@ def mapper_connected_via_permitted(
         if not active.get(mapper_id, False):
             result[mapper_id] = False
             continue
-        # Active set for this check: permitted forwarders + this mapper.
         check_active = {
             nid: bool(
                 active.get(nid, False)
@@ -130,7 +142,12 @@ def mapper_connected_via_permitted(
             for nid in positions
         }
         _, reachable = build_connectivity(
-            positions, check_active, time_s, link_model, ground_id
+            positions,
+            check_active,
+            time_s,
+            link_model,
+            ground_id,
+            roles=roles,
         )
         result[mapper_id] = mapper_id in reachable
     return result

@@ -7,7 +7,7 @@ name = "tar-swarm"
 version = "0.1.0"
 description = "Shared Python environment for university aerial swarm robotics"
 readme = "README.md"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12,<3.14"
 dynamic = ["dependencies"]
 
 [project.optional-dependencies]
