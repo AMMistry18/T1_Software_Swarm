@@ -36,6 +36,8 @@ addopts = "-ra"
 [tool.ruff]
 target-version = "py312"
 line-length = 88
+# Training notebooks intentionally install then import and re-import across cells.
+exclude = ["notebooks"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
