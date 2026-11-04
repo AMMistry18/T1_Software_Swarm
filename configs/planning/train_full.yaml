@@ -1,0 +1,10 @@
+# Substantial training starter. Adjust to available compute.
+# Example:
+#   python -m tar_swarm.mission_planning.cli train --scenario one_mapper_small \
+#     --output experiments/results/plan_train_full --timesteps 200000 --n-envs 4
+timesteps: 200000
+n_envs: 4
+seed: 0
+use_curriculum: true
+device: cpu
+learning_rate: 0.0003

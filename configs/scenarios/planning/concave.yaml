@@ -1,0 +1,48 @@
+schema_version: "1.0.0"
+region_polygon_m:
+  - [20, -10]
+  - [80, -10]
+  - [80, 10]
+  - [50, 10]
+  - [50, 40]
+  - [20, 40]
+coordinate_reference:
+  kind: local_enu_m
+base_position_m: [0, 0, 0]
+drones:
+  - id: mapper_1
+    role: mapper
+    launch_position_m: [10, 0, 15]
+    speed_m_s: 5.0
+    max_flight_time_s: 1500
+  - id: relay_1
+    role: relay
+    launch_position_m: [15, 5, 15]
+    speed_m_s: 4.0
+    max_flight_time_s: 1500
+    clearance_radius_m: 0.5
+  - id: relay_2
+    role: relay
+    launch_position_m: [15, -5, 15]
+    speed_m_s: 4.0
+    max_flight_time_s: 1500
+    clearance_radius_m: 0.5
+sensor:
+  survey_altitude_m: 15.0
+  swath_m: 18.0
+  overlap: 0.15
+communication:
+  max_range_m: 45.0
+  connection_margin_m: 2.0
+planning:
+  decision_dt_s: 2.0
+  sim_dt_s: 0.5
+  max_episode_time_s: 700.0
+  candidate_spacing_m: 20.0
+  segment_max_length_m: 90.0
+  capacities:
+    max_mappers: 2
+    max_relays: 3
+    max_candidates: 16
+    max_segments_per_mapper: 12
+seed: 3

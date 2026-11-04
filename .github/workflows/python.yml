@@ -21,6 +21,25 @@ jobs:
       - name: Test network simulator without MuJoCo
         run: python -m pytest -q tests/test_network.py
 
+  planning:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: src
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install mission-planning dependencies
+        run: |
+          python -m pip install -r requirements-planning.txt pytest ruff
+          python -m pip install -e .
+      - name: Lint planning package
+        run: python -m ruff check src/tar_swarm/mission_planning tests/test_mission_planning.py
+      - name: Test mission planning
+        run: python -m pytest -q tests/test_mission_planning.py
+
   test:
     runs-on: ubuntu-latest
     steps:

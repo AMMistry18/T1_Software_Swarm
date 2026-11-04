@@ -1,0 +1,44 @@
+# Deliberately difficult under the distance model. Planner failure does not
+# prove physical infeasibility under real RF.
+schema_version: "1.0.0"
+region_polygon_m: [[50, -30], [150, -30], [150, 30], [50, 30]]
+coordinate_reference:
+  kind: local_enu_m
+base_position_m: [0, 0, 0]
+drones:
+  - id: mapper_1
+    role: mapper
+    launch_position_m: [10, 0, 15]
+    speed_m_s: 5.0
+    max_flight_time_s: 600
+  - id: relay_1
+    role: relay
+    launch_position_m: [12, 2, 15]
+    speed_m_s: 4.0
+    max_flight_time_s: 600
+    clearance_radius_m: 0.5
+  - id: relay_2
+    role: relay
+    launch_position_m: [12, -2, 15]
+    speed_m_s: 4.0
+    max_flight_time_s: 600
+    clearance_radius_m: 0.5
+sensor:
+  survey_altitude_m: 15.0
+  swath_m: 20.0
+  overlap: 0.2
+communication:
+  max_range_m: 25.0
+  connection_margin_m: 5.0
+planning:
+  decision_dt_s: 2.0
+  sim_dt_s: 0.5
+  max_episode_time_s: 400.0
+  candidate_spacing_m: 30.0
+  segment_max_length_m: 100.0
+  capacities:
+    max_mappers: 2
+    max_relays: 2
+    max_candidates: 12
+    max_segments_per_mapper: 8
+seed: 4

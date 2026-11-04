@@ -1,0 +1,7 @@
+coverage: 5.0
+completion: 20.0
+disconnect: 2.0
+relay_travel: 0.05
+reposition: 0.5
+time: 0.1
+violation: 5.0

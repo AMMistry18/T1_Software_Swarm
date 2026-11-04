@@ -6,6 +6,31 @@ and baseline flight control**. The default mission has one mapper, three relays,
 and one ground station. Agent counts, vehicle parameters, gains, waypoints,
 clocks, gravity, and world geometry are configurable.
 
+## Offline mission planning (RL)
+
+A trainable **pre-deployment mission planner** builds coordinated mapper/relay
+missions inside a kinematic planning simulator (MaskablePPO), then exports
+validated waypoint missions for onboard execution. It reuses the network
+simulator’s ENU conventions, `move_towards` kinematics, and link/connectivity
+primitives. Full guide: [docs/mission_planning.md](docs/mission_planning.md).
+
+```bash
+python -m pip install -r requirements-planning.txt -r requirements-dev.txt
+python -m pip install -e ".[planning]"
+
+# End-to-end smoke (proves the pipeline runs; does not prove learning)
+python -m tar_swarm.mission_planning.cli smoke \
+  --output experiments/results/plan_smoke --timesteps 512
+
+# Substantial training
+python -m tar_swarm.mission_planning.cli train \
+  --scenario one_mapper_small \
+  --output experiments/results/plan_train \
+  --timesteps 200000 --n-envs 4
+```
+
+Library API: `plan_mission(request, checkpoint) -> PlanningResult`.
+
 A separate **basic network simulator** now supports fixed-step kinematic
 waypoint motion, a toy radius communication graph, ground-station reachability,
 animation, and headless logs/plots. It runs without MuJoCo:

@@ -1,0 +1,6 @@
+# Short pipeline smoke — proves training runs; does not prove learning.
+timesteps: 512
+n_envs: 1
+seed: 0
+use_curriculum: false
+device: cpu

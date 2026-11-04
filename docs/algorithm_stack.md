@@ -7,10 +7,12 @@ before moving to the next milestone.
 
 **Current status:** Step 0 flight simulation is implemented. A separate
 [basic network simulator](network_simulator.md) now implements kinematic
-waypoints, toy bidirectional radius edges, and ground reachability. It is a
-foundation, not the full Step 1 milestone below. Link quality/LOS/ETX, MuJoCo
-network integration, routing, packet transport, planners, mapping, and autonomous
-coordination remain planned work.
+waypoints, toy bidirectional radius edges, and ground reachability. An offline
+[mission-planning package](mission_planning.md) adds MaskablePPO planning,
+baselines, export, and validation on top of those kinematic/link primitives.
+It is a foundation, not the full Step 1 milestone below. Link quality/LOS/ETX,
+MuJoCo network integration, routing, packet transport, online mapping, and
+autonomous in-flight coordination remain planned work.
 
 Related documents:
 
