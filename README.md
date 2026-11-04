@@ -30,13 +30,16 @@ python -m tar_swarm.mission_planning.cli train \
 ```
 
 Library API: `plan_mission(request, checkpoint) -> PlanningResult`.
+Colab starter notebook: [notebooks/train_mission_planning_colab.ipynb](notebooks/train_mission_planning_colab.ipynb).
 
-A separate **basic network simulator** now supports fixed-step kinematic
-waypoint motion, a toy radio-range communication graph with obstacles that block
-links, ground-station reachability, fewest-hops routing, and a live window on a
-1 km map (click to send drones to goals; drag, add, and remove network and
-mapping drones; draw obstacles; change and show radio ranges; keep network drones
-in optimal chains; watch each mapper's route; change the speed; choose whether to
+## Basic network simulator
+
+A separate **basic network simulator** supports fixed-step kinematic waypoint
+motion, a toy radio-range communication graph with obstacles that block links,
+ground-station reachability, fewest-hops routing, and a live window on a 1 km
+map (click to send drones to goals; drag, add, and remove network and mapping
+drones; draw obstacles; change and show radio ranges; keep network drones in
+optimal chains; watch each mapper's route; change the speed; choose whether to
 save), plus headless logs/plots. It runs without MuJoCo:
 
 ```bash
