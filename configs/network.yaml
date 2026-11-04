@@ -1,10 +1,24 @@
-# Toy radius connectivity demo: meters, seconds; no real radio calibration.
+# Default scene: a 1 km x 1 km map, in meters and seconds. The base station sits at
+# the bottom-left corner (0, 0, 0); x points east, y north, z up. The radio ranges
+# and the speeds are placeholders, not measured VoCore2 or airframe values.
+# Robert's original 135 m demo lives on as SMALL_DEMO in tests/test_network.py.
 seed: 7                 # Reserved reproducible RNG; baseline has no randomness.
 dt_s: 0.1
-duration_s: 24.0
+duration_s: 300.0       # 5 simulated minutes
 graph_interval_s: 0.5   # Must be an integer multiple of dt_s.
-communication_radius_m: 30.0
-plot_bounds_m: [[-10, 125], [-25, 30]]
+# Radio range per kind of drone. A link needs both ends in range, so it works up to
+# the SMALLER of its two ranges. The live window's sliders change these.
+radio_range_m:          # TODO(source): VoCore2 air-to-air range unmeasured; plausible 100-1000 m
+  ground_station: 300.0
+  relay: 300.0
+  mapper: 300.0
+plot_bounds_m: [[0, 1000], [0, 1000]]  # The map: a 1 km square.
+grid_step_m: 100.0      # Drawing only: one grid square is 100 m x 100 m.
+new_relay_altitude_m: 10.0  # Height of network drones added with a right-click.
+new_relay_speed_m_s: 10.0   # TODO(source): placeholder network-drone speed
+new_mapper_altitude_m: 10.0  # Height of mapping drones added with shift + right-click.
+new_mapper_speed_m_s: 4.0   # TODO(source): placeholder mapping-drone speed
+obstacles_m: []           # Boxes [x_min, y_min, x_max, y_max] that block signals.
 # Counts are determined by this list; IDs must be unique.
 agents:
   - id: ground
@@ -12,16 +26,14 @@ agents:
     position_m: [0, 0, 0]
   - id: mapper_1
     role: mapper
-    position_m: [70, 0, 10]
-    speed_m_s: 4.0
-    waypoints_m: [[110, 0, 10], [70, 0, 10]]
+    position_m: [600, 450, 10]
+    speed_m_s: 4.0        # TODO(source): placeholder mapping-drone speed
+    waypoints_m: [[900, 675, 10], [600, 450, 10]]
   - id: relay_1
     role: relay
-    position_m: [25, 0, 10]
-    speed_m_s: 1.0
-    waypoints_m: [[25, 8, 10], [25, 0, 10]]
+    position_m: [200, 150, 10]
+    speed_m_s: 10.0       # TODO(source): placeholder network-drone speed
   - id: relay_2
     role: relay
-    position_m: [50, 0, 10]
-    speed_m_s: 1.0
-    waypoints_m: [[50, -8, 10], [50, 0, 10]]
+    position_m: [400, 300, 10]
+    speed_m_s: 10.0       # TODO(source): placeholder network-drone speed
