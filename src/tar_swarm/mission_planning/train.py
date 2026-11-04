@@ -33,8 +33,9 @@ from tar_swarm.mission_planning.scenarios import (
 from tar_swarm.mission_planning.schemas import MissionRequest
 
 
-def _mask_fn(env: MissionPlanningEnv):
-    return env.action_masks()
+def _mask_fn(env):
+    # ActionMasker may pass wrappers; masks live on MissionPlanningEnv.
+    return env.unwrapped.action_masks()
 
 
 def _curriculum_factory(rng):

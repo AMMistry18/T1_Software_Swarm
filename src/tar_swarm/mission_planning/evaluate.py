@@ -24,7 +24,8 @@ from tar_swarm.mission_planning.schemas import MissionRequest, PlanningResult
 
 
 def _mask_fn(env):
-    return env.action_masks()
+    # ActionMasker may pass Monitor/other wrappers; masks live on the base env.
+    return env.unwrapped.action_masks()
 
 
 def evaluate_baselines(request: MissionRequest) -> dict[str, Any]:
@@ -129,7 +130,9 @@ def evaluate_checkpoint(
     n_eval_episodes: int = 3,
 ) -> dict[str, Any]:
     checkpoint = Path(checkpoint)
-    env = ActionMasker(Monitor(MissionPlanningEnv(request=request)), _mask_fn)
+    env = MissionPlanningEnv(request=request)
+    env = ActionMasker(env, _mask_fn)
+    env = Monitor(env)
     model = MaskablePPO.load(str(checkpoint), env=env)
     mean_r, std_r = evaluate_policy(
         model, env, n_eval_episodes=n_eval_episodes, deterministic=True
