@@ -28,7 +28,9 @@ kinematics. Mapper segment order is deterministic; RL chooses relay placement
 and release timing only.
 
 Rewards (configurable; each component logged): coverage gain, completion bonus,
-disconnect / relay-travel / reposition / time / violation penalties.
+disconnect / relay-travel / reposition / time / violation penalties, plus
+``idle`` while survey incomplete and no drone is busy, and ``incomplete``
+when the episode ends without mission_complete (scaled by uncovered fraction).
 
 Endings: ``terminated`` after survey+return resolution; ``truncated`` on
 time-limit (not claimed as task failure).

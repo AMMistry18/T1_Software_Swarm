@@ -163,6 +163,7 @@ def test_reward_no_farming_and_components_logged():
     )
     d = br.as_dict()
     assert "coverage" in d and "total" in d
+    assert "idle" in d and "incomplete" in d
     # Zero new coverage yields zero coverage reward.
     br0 = compute_reward(
         RewardWeights(),
@@ -178,6 +179,62 @@ def test_reward_no_farming_and_components_logged():
     )
     assert br0.coverage == 0.0
     assert br0.time < 0.0  # time always penalized — stationary is not free success
+
+
+def test_reward_idle_and_incomplete_block_hold_exploit():
+    weights = RewardWeights()
+    # Pure hold step with stagnation must be much worse than time-only.
+    hold = compute_reward(
+        weights,
+        new_coverage_frac=0.0,
+        mission_complete=False,
+        disconnect_s=0.0,
+        decision_dt=2.0,
+        relay_travel_m=0.0,
+        repositions=0,
+        violations=0,
+        max_episode_time_s=600.0,
+        norm_scale_m=200.0,
+        stagnant=True,
+    )
+    assert hold.idle == -weights.idle
+    assert hold.total < -0.5
+
+    done_bad = compute_reward(
+        weights,
+        new_coverage_frac=0.0,
+        mission_complete=False,
+        disconnect_s=0.0,
+        decision_dt=2.0,
+        relay_travel_m=0.0,
+        repositions=0,
+        violations=0,
+        max_episode_time_s=600.0,
+        norm_scale_m=200.0,
+        stagnant=True,
+        ended_incomplete=True,
+        coverage_fraction=0.0,
+    )
+    assert done_bad.incomplete == -weights.incomplete
+    # Full-episode hold (300 decisions) must beat the old ~-0.1 "best".
+    episode_hold = 299 * hold.total + done_bad.total
+    assert episode_hold < -100.0
+
+
+def test_env_hold_forever_is_strongly_negative():
+    env = MissionPlanningEnv(request=one_mapper_small())
+    env.reset(seed=0)
+    total = 0.0
+    for _ in range(400):
+        _obs, reward, terminated, truncated, info = env.step(0)  # hold
+        total += float(reward)
+        if terminated or truncated:
+            assert info["reward"]["incomplete"] < 0.0
+            break
+    else:
+        raise AssertionError("expected time-limit truncation while holding")
+    assert total < -100.0
+    assert env.sim.metrics.coverage_fraction == 0.0
 
 
 def test_action_masks_variable_counts():

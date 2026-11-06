@@ -8,7 +8,11 @@ from tar_swarm.mission_planning.baselines import (
     search_relay_baseline,
     static_relay_baseline,
 )
-from tar_swarm.mission_planning.checkpointing import assert_compatible, load_meta
+from tar_swarm.mission_planning.checkpointing import (
+    assert_compatible,
+    build_checkpoint_meta,
+    load_meta,
+)
 from tar_swarm.mission_planning.compile import compile_from_sim
 from tar_swarm.mission_planning.evaluate import planning_result_from_rollout
 from tar_swarm.mission_planning.preprocess import prepare_scenario
@@ -75,14 +79,14 @@ def plan_mission(
                 meta = load_meta(path)
                 break
         if meta is None:
-            return PlanningResult(
-                success=False,
-                failure=FailureDiagnostics(
-                    code="missing_checkpoint_meta",
-                    message="Checkpoint metadata (.meta.json) is required",
-                    details={"checkpoint": str(checkpoint)},
-                ),
-                source="rl",
+            # Allow zip-only drops from Kaggle Downloads.
+            meta = build_checkpoint_meta(
+                request,
+                train_config={
+                    "norm_scale_m": 200.0,
+                    "reward_weights": {},
+                    "note": "meta synthesized; sidecar .meta.json was missing",
+                },
             )
         try:
             assert_compatible(meta, request)

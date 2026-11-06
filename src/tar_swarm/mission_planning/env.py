@@ -113,6 +113,9 @@ class MissionPlanningEnv(Env):
                 violations=1,
                 max_episode_time_s=self.sim.max_time,
                 norm_scale_m=self.norm_scale_m,
+                stagnant=False,
+                ended_incomplete=False,
+                coverage_fraction=0.0,
             )
             self._reward_log.append(breakdown.as_dict())
             return (
@@ -150,6 +153,11 @@ class MissionPlanningEnv(Env):
         repos = max(0, after["repositions"] - before["repositions"])
         viol = max(0, after["violations"] - before["violations"])
         complete = bool(self.sim.metrics.mission_complete and self.sim.terminated)
+        terminated = bool(self.sim.terminated)
+        truncated = bool(self.sim.truncated) and not terminated
+        # Punish do-nothing: survey still open and nobody is moving/working.
+        stagnant = (not self.sim._survey_complete()) and (not self.sim._any_busy())
+        ended_incomplete = (terminated or truncated) and not complete
 
         breakdown = compute_reward(
             self.reward_weights,
@@ -162,10 +170,11 @@ class MissionPlanningEnv(Env):
             violations=viol,
             max_episode_time_s=self.sim.max_time,
             norm_scale_m=self.norm_scale_m,
+            stagnant=stagnant,
+            ended_incomplete=ended_incomplete,
+            coverage_fraction=float(self.sim.metrics.coverage_fraction),
         )
         self._reward_log.append(breakdown.as_dict())
-        terminated = bool(self.sim.terminated)
-        truncated = bool(self.sim.truncated) and not terminated
         info: dict[str, Any] = {
             "reward": breakdown.as_dict(),
             "metrics": {

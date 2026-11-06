@@ -71,6 +71,17 @@ Capacities are fixed and padded (`max_mappers`, `max_relays`, `max_candidates`,
 `max_segments_per_mapper`). Checkpoints declare capacities and reject larger
 scenarios.
 
+### Reward note (anti hold-collapse)
+
+Pure ``hold`` used to score ~−0.1 (time only) while clumsy exploration scored
+much worse, so PPO collapsed to always-hold. Defaults now add:
+
+- ``idle``: penalty each decision while the survey is incomplete and no drone
+  is busy
+- ``incomplete``: terminal penalty scaled by uncovered fraction if the episode
+  ends without ``mission_complete``
+- softer ``disconnect`` / ``violation`` so early attempts are not catastrophic
+
 ## Install
 
 ```bash

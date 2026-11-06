@@ -50,3 +50,5 @@ Thumbs.db
 !.env.example
 *.blend1
 *.blend2
+experiments/checkpoints/incoming/*.zip
+experiments/results/incoming_eval/

@@ -16,7 +16,11 @@ from tar_swarm.mission_planning.baselines import (
     search_relay_baseline,
     static_relay_baseline,
 )
-from tar_swarm.mission_planning.checkpointing import assert_compatible, load_meta
+from tar_swarm.mission_planning.checkpointing import (
+    assert_compatible,
+    build_checkpoint_meta,
+    load_meta,
+)
 from tar_swarm.mission_planning.compile import compile_from_sim
 from tar_swarm.mission_planning.env import MissionPlanningEnv
 from tar_swarm.mission_planning.preprocess import prepare_scenario
@@ -26,6 +30,27 @@ from tar_swarm.mission_planning.schemas import MissionRequest, PlanningResult
 def _mask_fn(env):
     # ActionMasker may pass Monitor/other wrappers; masks live on the base env.
     return env.unwrapped.action_masks()
+
+
+def _resolve_meta(checkpoint: Path, request: MissionRequest) -> dict[str, Any]:
+    """Load sidecar meta, or synthesize from the eval request if only the zip was saved."""
+    candidates = [
+        checkpoint.with_suffix(".meta.json"),
+        checkpoint.with_name(checkpoint.stem + ".meta.json"),
+    ]
+    for path in candidates:
+        if path.exists():
+            return load_meta(path)
+    # Kaggle/Downloads often include only best_model.zip.
+    return build_checkpoint_meta(
+        request,
+        train_config={
+            "norm_scale_m": 200.0,
+            "reward_weights": {},
+            "note": "meta synthesized; sidecar .meta.json was missing",
+        },
+        best_metric=None,
+    )
 
 
 def evaluate_baselines(request: MissionRequest) -> dict[str, Any]:
@@ -58,14 +83,7 @@ def rollout_policy(
     max_steps: int = 500,
 ) -> dict[str, Any]:
     checkpoint = Path(checkpoint)
-    meta_path = checkpoint.with_suffix(".meta.json")
-    if not meta_path.exists():
-        # SB3 saves as path.zip; meta may be path.meta.json beside stem.
-        alt = checkpoint.parent / (checkpoint.stem + ".meta.json")
-        if checkpoint.suffix == ".zip":
-            alt = checkpoint.with_name(checkpoint.stem + ".meta.json")
-        meta_path = alt
-    meta = load_meta(meta_path)
+    meta = _resolve_meta(checkpoint, request)
     assert_compatible(meta, request)
 
     env = MissionPlanningEnv(request=request)
