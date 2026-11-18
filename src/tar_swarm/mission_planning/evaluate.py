@@ -33,7 +33,8 @@ def _mask_fn(env):
 
 
 def _resolve_meta(checkpoint: Path, request: MissionRequest) -> dict[str, Any]:
-    """Load sidecar meta, or synthesize from the eval request if only the zip was saved."""
+    """Load sidecar meta, or synthesize from the eval request if only the zip was
+    saved."""
     candidates = [
         checkpoint.with_suffix(".meta.json"),
         checkpoint.with_name(checkpoint.stem + ".meta.json"),
