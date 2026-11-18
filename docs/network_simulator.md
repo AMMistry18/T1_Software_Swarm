@@ -139,7 +139,19 @@ does not move. Empty waypoint sequences hold the initial position.
   (`network/routing.py`, a stand-in for batman-adv) finds each drone's next hop
   toward a destination by breadth-first search: the fewest-hops path, with ties
   broken the same way every time. It re-routes instantly when links change
-  (batman takes a few seconds). No packet transport is simulated yet.
+  (batman takes a few seconds).
+- Packets (`network/transport.py`): each step, every active drone makes Health
+  packets (10 Hz) for the base, each mapper makes LiDAR keyframes (2 Hz, 10,000
+  bytes cut into 9 chunks of at most 1200 bytes), and the base makes Reposition
+  packets (5 Hz) for each network drone. Sizes follow the team's packet spec. Every
+  drone (and the base) has an outbox; one radio talks at a time (real radios settle turns
+  themselves by listening and random waits; the simulation uses round robin as a
+  stand-in), and it sends its
+  packet with the highest score = head start (Health 2 s, Reposition 1 s, LiDAR
+  0 s) + seconds waited. Each send moves one packet one hop and takes
+  `per_packet_overhead_s` + bytes x 8 / `link_rate_mbps` (plus 90 bytes of
+  UDP/IP/batman/Wi-Fi headers). Packets with no route are dropped. The summary
+  reports made / delivered / dropped / waiting and delays per kind.
 - Tick zero records initial positions and graph. Each subsequent tick moves all
   drones using targets from the previous snapshot, advances the integer clock,
   updates the graph if due, then samples state and next targets. Motion updates
@@ -236,7 +248,7 @@ Rerun with a new output directory to reproduce the demonstration.
 | `network/routing.py`: `next_hops(graph, destination)`, `route(graph, source, destination)` | Fewest-hops routing; grow it into link-quality (ETX) routing once links have quality scores |
 | `common/world.py`: `segment_crosses_box`, `line_of_sight` | Obstacle geometry for links now, and for path planning around obstacles later |
 | `strategies/fixed_relay.py`: `hop_limits`, `chain_slots`, `split_relays`, `match_relays_to_slots`, `optimal_chain_plan` | The straight-chain placement behind "auto optimal positions"; compare other placement strategies against it through `Simulator.set_relay_planner` |
-| Future `network/transport.py` | Add packet events/transport when authorized; graph observations currently say nothing about packet delivery |
+| `network/transport.py`: `Transport`, `score(packet, now_s)` | Outboxes, the priority score, and the shared channel; change `score` or `HEAD_START_S` to try another scheduling rule |
 | `metrics/network.py`, `network/results.py`, `network/visualization.py` | Define metrics once, then log and display them |
 
 Policies currently receive global ground-truth positions: this is a centralized
@@ -249,7 +261,8 @@ Do not infer realistic flight or radio performance from this baseline. It has
 only one placement strategy (straight chains, one per mapper, switched on by
 hand, ignoring obstacles), no path planning around obstacles (drones fly
 straight through them), no outage recovery, no measured link quality, no
-routing delay, and no queues or packet exchange.
+routing delay, and only a first packet model (one link speed for every link,
+placeholder per-packet cost, no packet loss on working links).
 
 ## Verification
 

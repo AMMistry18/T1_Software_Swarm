@@ -54,6 +54,7 @@ SMALL_DEMO = {
     "new_relay_speed_m_s": 1.0,
     "new_mapper_altitude_m": 10.0,
     "new_mapper_speed_m_s": 4.0,
+    "packets": {"link_rate_mbps": 10.0, "per_packet_overhead_s": 0.0003},
     "obstacles_m": [],
     "agents": [
         {"id": "ground", "role": "ground_station", "position_m": [0, 0, 0]},
@@ -254,6 +255,8 @@ def test_terminal_reconnection_has_zero_metric_weight(config):
         ("grid_step_m", 0),
         ("new_relay_altitude_m", float("nan")),
         ("new_relay_speed_m_s", -1),
+        ("packets", {"link_rate_mbps": 0, "per_packet_overhead_s": 0.0003}),
+        ("packets", {"link_rate_mbps": 10, "per_packet_overhead_s": -1}),
     ],
 )
 def test_invalid_settings(config, key, value):

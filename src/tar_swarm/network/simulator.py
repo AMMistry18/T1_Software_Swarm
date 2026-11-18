@@ -17,6 +17,7 @@ from tar_swarm.network.connectivity import reachable_from
 from tar_swarm.network.graph import GraphSnapshot, build_graph
 from tar_swarm.network.motion import TargetPolicy, WaypointPolicy, move_towards
 from tar_swarm.network.radio import LinkModel, RangeLink
+from tar_swarm.network.transport import Transport
 
 
 @dataclass(frozen=True)
@@ -82,6 +83,8 @@ class Simulator:
             self.positions, self.active, 0.0, self.link_model, self.roles
         )
         self.reachable = reachable_from(self.graph, self.ground_id)
+        # Packets: every node's outbox and the shared radio channel.
+        self.transport = Transport(self.config["packets"], self.dt_s)
         self.history = [self._frame(True)]
 
     @property
@@ -130,6 +133,8 @@ class Simulator:
     def step(self) -> Frame:
         if self.done:
             raise StopIteration("Simulation duration reached")
+        # Packets move during this step over the links as they are at its start.
+        self.transport.step(self.tick, self.graph, self.roles, self.active)
         previous = self.history[-1]
         for agent in self.agents:
             name = agent["id"]

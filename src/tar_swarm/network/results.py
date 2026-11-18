@@ -90,6 +90,8 @@ def save_results(simulator, output: str | Path) -> dict:
         "mappers": connectivity_metrics(
             simulator.history, [name for name in roles if roles[name] == "mapper"]
         ),
+        # Packet counts and delays by kind (transport.py).
+        "packets": simulator.transport.summary(),
     }
     (output / "summary.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"

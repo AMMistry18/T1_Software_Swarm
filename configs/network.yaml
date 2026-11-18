@@ -18,6 +18,11 @@ new_relay_altitude_m: 10.0  # Height of network drones added with a right-click.
 new_relay_speed_m_s: 10.0   # TODO(source): placeholder network-drone speed
 new_mapper_altitude_m: 10.0  # Height of mapping drones added with shift + right-click.
 new_mapper_speed_m_s: 4.0   # TODO(source): placeholder mapping-drone speed
+# Packets (network/transport.py). Packet kinds, sizes, and rates follow the team's
+# packet spec and live in transport.py; these two are radio settings.
+packets:
+  link_rate_mbps: 10.0          # TODO(source): real-world Wi-Fi speed per link; team plans for 1, 10, 30 (spec sheet: up to 300)
+  per_packet_overhead_s: 0.0003 # TODO(source): channel wait + preamble + radio ACK per packet; plausible 0.00015-0.0005
 obstacles_m: []           # Boxes [x_min, y_min, x_max, y_max] that block signals.
 # Counts are determined by this list; IDs must be unique.
 agents:

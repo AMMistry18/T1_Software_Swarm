@@ -4,17 +4,17 @@ On the real drones, batman-adv works this out from its "I'm here" messages. This
 is a small stand-in that gives the same answers from the simulator's snapshot of
 working links (a GraphSnapshot from graph.py).
 
-The method is a breadth-first search, like ripples spreading out from a stone:
+The method is a bfs
 - the destination (say, the base) is ring 0
-- drones linked to it are ring 1
-- drones linked to a ring-1 drone, and not already in a ring, are ring 2, and so on
+- drones directly linked to it are ring 1
+- drones directly linked to a ring-1 drone, and not already in a ring, are ring 2,
+  and so on
 A drone's next hop is the neighbor it was reached from, one ring closer. Following
 next hops from any drone walks a fewest-hops path to the destination.
 
 Why fewest hops: links are simply on or off for now, so every working link is
-equally good, and batman picks the fewest hops too. Ties are broken by the order
-the IDs sort in, so results repeat exactly. Once links have quality scores, the
-same idea grows into "fewest expected tries" (ETX with Dijkstra, in the team plan).
+equally good. Once links have quality scores, the same idea grows into 
+something like Dijkstra
 """
 
 from collections import deque

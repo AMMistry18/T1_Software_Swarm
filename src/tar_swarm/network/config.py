@@ -77,6 +77,13 @@ def validate_config(config: dict) -> dict:
         speed = config[f"new_{role}_speed_m_s"]
         if not np.isfinite(speed) or speed < 0:
             raise ValueError(f"new_{role}_speed_m_s must be nonnegative and finite")
+    # Packets (transport.py): the Wi-Fi link speed and the fixed time per packet.
+    packets = config["packets"]
+    if not np.isfinite(packets["link_rate_mbps"]) or packets["link_rate_mbps"] <= 0:
+        raise ValueError("packets.link_rate_mbps must be positive and finite")
+    overhead_s = packets["per_packet_overhead_s"]
+    if not np.isfinite(overhead_s) or overhead_s < 0:
+        raise ValueError("packets.per_packet_overhead_s must be nonnegative and finite")
     # Obstacles (optional): boxes [x_min, y_min, x_max, y_max] that block signals.
     # setdefault adds the key with [] only if the file left it out.
     config.setdefault("obstacles_m", [])
