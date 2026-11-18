@@ -135,7 +135,10 @@ class MissionPlanPolicy:
         wi = int(self._wp_index.get(agent_id, 0))
         wi = min(max(wi, 0), len(waypoints) - 1)
         # Advance forward only while within tolerance of the current corner.
-        while wi < len(waypoints) - 1 and self._xy_dist(pos, waypoints[wi]) <= self.arrival_tol_m:
+        while (
+            wi < len(waypoints) - 1
+            and self._xy_dist(pos, waypoints[wi]) <= self.arrival_tol_m
+        ):
             wi += 1
         self._wp_index[agent_id] = wi
         goal = waypoints[wi].copy()
@@ -380,7 +383,9 @@ def play_mission_on_network(
         "gif": str(gif_path),
         "network_summary": summary,
     }
-    summary_path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+    summary_path.write_text(
+        json.dumps(payload, indent=2, default=str), encoding="utf-8"
+    )
     return payload
 
 

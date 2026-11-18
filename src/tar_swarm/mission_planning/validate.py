@@ -112,7 +112,9 @@ def validate_mission(
                 "waypoints": wps,
                 "index": 0,
                 "surveying": action.kind == ActionKind.SURVEY,
-                "hold_s": float(action.hold_s) if action.kind == ActionKind.HOLD else 0.0,
+                "hold_s": (
+                    float(action.hold_s) if action.kind == ActionKind.HOLD else 0.0
+                ),
                 "hold_remaining_s": None,
             }
             del pending[aid]
