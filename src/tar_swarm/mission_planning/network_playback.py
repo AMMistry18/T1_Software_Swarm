@@ -46,7 +46,12 @@ def mission_actions_for_drone(
 
 
 class MissionPlanPolicy:
-    """Advance each drone through MissionPlan actions, honoring depends_on."""
+    """Advance each drone through MissionPlan actions, honoring depends_on.
+
+    Waypoint progress is forward-only. The earlier "nearest unfinished waypoint"
+    scan retargeted a previous corner after overshoot, which made drones shake
+    in place at arrival-tolerance boundaries.
+    """
 
     def __init__(
         self,
@@ -62,8 +67,16 @@ class MissionPlanPolicy:
         for action in plan.actions:
             self._by_drone.setdefault(action.drone_id, []).append(action)
         self._index = {drone: 0 for drone in self._by_drone}
+        self._wp_index = {drone: 0 for drone in self._by_drone}
+        self._active_action_id = {drone: None for drone in self._by_drone}
         self._completed: set[str] = set()
         self._hold_until: dict[str, float] = {}
+        self._modes: dict[str, str] = {drone: "idle" for drone in self._by_drone}
+
+    @property
+    def modes(self) -> dict[str, str]:
+        """Latest per-drone activity label after ``target()`` (e.g. survey)."""
+        return dict(self._modes)
 
     def _action_ready(self, action: WaypointAction) -> bool:
         return all(dep in self._completed for dep in action.depends_on)
@@ -78,6 +91,10 @@ class MissionPlanPolicy:
                 return
         self._completed.add(action.action_id)
 
+    @staticmethod
+    def _xy_dist(a: np.ndarray, b: np.ndarray) -> float:
+        return float(np.linalg.norm(a[:2] - b[:2]))
+
     def target(
         self, agent_id: str, time_s: float, positions: Mapping[str, np.ndarray]
     ) -> np.ndarray:
@@ -86,47 +103,51 @@ class MissionPlanPolicy:
         actions = self._by_drone.get(agent_id, [])
         idx = self._index.get(agent_id, 0)
 
-        # Skip already-finished actions (e.g. after reload).
         while idx < len(actions) and actions[idx].action_id in self._completed:
             idx += 1
         self._index[agent_id] = idx
 
         if idx >= len(actions):
+            self._modes[agent_id] = "idle"
             return pos.copy()
 
         action = actions[idx]
         if not self._action_ready(action):
-            # Wait in place until dependencies complete.
+            self._modes[agent_id] = "idle"
             return pos.copy()
 
-        waypoints = _flatten_altitude(list(action.waypoints_m), z)
+        waypoints = [
+            np.asarray(wp, dtype=float)
+            for wp in _flatten_altitude(list(action.waypoints_m), z)
+        ]
         if not waypoints:
             self._completed.add(action.action_id)
             self._index[agent_id] = idx + 1
+            self._wp_index[agent_id] = 0
+            self._active_action_id[agent_id] = None
+            self._modes[agent_id] = "idle"
             return pos.copy()
 
-        # Walk sequential waypoints inside the action.
-        goal = np.asarray(waypoints[0], dtype=float)
-        for wp in waypoints:
-            candidate = np.asarray(wp, dtype=float)
-            if float(np.linalg.norm(pos - candidate)) > self.arrival_tol_m:
-                goal = candidate
-                break
-            goal = candidate
-        else:
-            # At final waypoint of this action.
+        if self._active_action_id.get(agent_id) != action.action_id:
+            self._active_action_id[agent_id] = action.action_id
+            self._wp_index[agent_id] = 0
+
+        wi = int(self._wp_index.get(agent_id, 0))
+        wi = min(max(wi, 0), len(waypoints) - 1)
+        # Advance forward only while within tolerance of the current corner.
+        while wi < len(waypoints) - 1 and self._xy_dist(pos, waypoints[wi]) <= self.arrival_tol_m:
+            wi += 1
+        self._wp_index[agent_id] = wi
+        goal = waypoints[wi].copy()
+        self._modes[agent_id] = str(action.kind.value)
+
+        if wi >= len(waypoints) - 1 and self._xy_dist(pos, goal) <= self.arrival_tol_m:
             self._mark_arrived(action, time_s)
             if action.action_id in self._completed:
                 self._index[agent_id] = idx + 1
-            return goal.copy()
-
-        if float(np.linalg.norm(pos - goal)) <= self.arrival_tol_m:
-            # Reached current goal; if it was the last, complete above.
-            if np.allclose(goal, waypoints[-1]):
-                self._mark_arrived(action, time_s)
-                if action.action_id in self._completed:
-                    self._index[agent_id] = idx + 1
-        return goal.copy()
+                self._wp_index[agent_id] = 0
+                self._active_action_id[agent_id] = None
+        return goal
 
 
 def build_network_config_from_mission(
@@ -215,14 +236,78 @@ def build_network_config_from_mission(
         },
         "obstacles_m": [],
         "agents": agents,
-        # Non-network metadata for humans / tools.
+        # Optional survey footprint for the network map (ignored if absent).
+        "region_polygon_m": [list(map(float, p)) for p in request.region_polygon_m],
         "mission_playback": {
             "mission_id": plan.mission_id,
-            "region_polygon_m": [list(p) for p in request.region_polygon_m],
             "expected_coverage_fraction": plan.expected_coverage_fraction,
+            "swath_m": float(request.sensor.swath_m),
+            "track_coverage": True,
         },
     }
     return validate_config(config)
+
+
+class MissionCoverageOverlay:
+    """Rebuild planner-style scanned swath from network history + survey modes."""
+
+    def __init__(self, request: MissionRequest):
+        from shapely.geometry import LineString, Point
+        from shapely.ops import unary_union
+
+        from tar_swarm.mission_planning.geometry import polygon_from_ring
+        from tar_swarm.mission_planning.replay import add_coverage_shade
+
+        self._Point = Point
+        self._LineString = LineString
+        self._unary_union = unary_union
+        self._add_coverage_shade = add_coverage_shade
+        self.region = polygon_from_ring(request.region_polygon_m)
+        self.swath_m = float(request.sensor.swath_m)
+        self.mapper_ids = [
+            d.id for d in request.drones if d.role == Role.MAPPER
+        ]
+        self.region_area = float(self.region.area)
+
+    def covered_through(self, history: list) -> tuple[Any, float]:
+        half = 0.5 * self.swath_m
+        pieces = []
+        for i in range(1, len(history)):
+            prev = history[i - 1]
+            cur = history[i]
+            prev_modes = getattr(prev, "modes", {}) or {}
+            cur_modes = getattr(cur, "modes", {}) or {}
+            for mid in self.mapper_ids:
+                if mid not in prev.positions or mid not in cur.positions:
+                    continue
+                if prev_modes.get(mid) != "survey" and cur_modes.get(mid) != "survey":
+                    continue
+                a = prev.positions[mid]
+                b = cur.positions[mid]
+                start_xy = (float(a[0]), float(a[1]))
+                end_xy = (float(b[0]), float(b[1]))
+                if np.linalg.norm(np.asarray(end_xy) - np.asarray(start_xy)) < 1e-9:
+                    footprint = self._Point(start_xy).buffer(half)
+                else:
+                    footprint = self._LineString([start_xy, end_xy]).buffer(
+                        half, cap_style=2, join_style=2
+                    )
+                piece = footprint.intersection(self.region)
+                if not piece.is_empty:
+                    pieces.append(piece)
+        if not pieces:
+            return None, 0.0
+        covered = self._unary_union(pieces).intersection(self.region)
+        frac = 0.0 if self.region_area <= 0 else min(
+            1.0, float(covered.area) / self.region_area
+        )
+        return covered, frac
+
+    def redraw(self, ax, history: list, artists: list) -> tuple[list, float]:
+        for artist in artists:
+            artist.remove()
+        covered, frac = self.covered_through(history)
+        return self._add_coverage_shade(ax, covered, label=None), frac
 
 
 def play_mission_on_network(
@@ -258,6 +343,8 @@ def play_mission_on_network(
         agent_altitudes=altitudes,
     )
     simulator = Simulator(config, policy=policy)
+    # Planner-style scanned-swath overlay (no-op for default network demos).
+    simulator.mission_coverage = MissionCoverageOverlay(request)
 
     if animate:
         from tar_swarm.network.visualization import animate as network_animate
@@ -283,12 +370,63 @@ def play_mission_on_network(
 
     plot_path = output_dir / "trajectory_connectivity.png"
     save_plot(simulator, plot_path)
+    gif_path = output_dir / "network_replay.gif"
+    save_network_gif(simulator, gif_path)
     summary_path = output_dir / "playback_summary.json"
     payload = {
         "saved": True,
         "output_dir": str(output_dir),
         "plot": str(plot_path),
+        "gif": str(gif_path),
         "network_summary": summary,
     }
     summary_path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
     return payload
+
+
+def save_network_gif(
+    simulator: Simulator,
+    path: str | Path,
+    *,
+    stride: int = 5,
+    fps: int = 8,
+) -> Path:
+    """Render the network map over time (links/ranges/routes) to an animated GIF."""
+    import matplotlib.pyplot as plt
+    from matplotlib import animation
+
+    from tar_swarm.network.visualization import NetworkView
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    full_history = list(simulator.history)
+    if not full_history:
+        raise ValueError("simulator has no history to animate")
+    indices = list(range(0, len(full_history), max(1, int(stride))))
+    if indices[-1] != len(full_history) - 1:
+        indices.append(len(full_history) - 1)
+
+    fig, ax = plt.subplots(figsize=(9, 7), constrained_layout=True)
+    # NetworkView reads history[-1]; truncate history per frame.
+    simulator.history = full_history[:1]
+    view = NetworkView(ax, simulator, live=False)
+    view.draw()
+    ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0), borderaxespad=0, fontsize=8)
+
+    def _update(frame_idx: int):
+        end = indices[frame_idx] + 1
+        simulator.history = full_history[:end]
+        view.draw()
+        return view.moving_artists()
+
+    anim = animation.FuncAnimation(
+        fig,
+        _update,
+        frames=len(indices),
+        interval=1000 / max(fps, 1),
+        blit=False,
+    )
+    anim.save(path, writer=animation.PillowWriter(fps=fps))
+    simulator.history = full_history
+    plt.close(fig)
+    return path

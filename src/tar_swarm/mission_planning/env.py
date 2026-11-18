@@ -30,11 +30,14 @@ class MissionPlanningEnv(Env):
         reward_weights: RewardWeights | None = None,
         norm_scale_m: float = 200.0,
         scenario_factory=None,
+        relay_dwell_decisions: int = 4,
     ):
         super().__init__()
         self.reward_weights = reward_weights or RewardWeights()
         self.norm_scale_m = float(norm_scale_m)
         self.scenario_factory = scenario_factory
+        # After a relay arrives, block further redeploys for this many decisions.
+        self.relay_dwell_decisions = max(0, int(relay_dwell_decisions))
         if scenario is not None:
             self._base_scenario = scenario
             self._base_request = scenario.request
@@ -54,6 +57,8 @@ class MissionPlanningEnv(Env):
         self._mapper_ids: list[str] = []
         self._relay_ids: list[str] = []
         self._candidate_ids: list[str] = []
+        self._relay_dwell_remaining: dict[str, int] = {}
+        self._relay_was_busy: dict[str, bool] = {}
 
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
@@ -66,6 +71,8 @@ class MissionPlanningEnv(Env):
         self._relay_ids = [r.id for r in scenario.request.relays]
         self._candidate_ids = [c.id for c in scenario.candidates]
         self._reward_log = []
+        self._relay_dwell_remaining = {rid: 0 for rid in self._relay_ids}
+        self._relay_was_busy = {rid: False for rid in self._relay_ids}
         obs = self._obs()
         return obs, {"scenario_warnings": list(scenario.warnings)}
 
@@ -77,6 +84,9 @@ class MissionPlanningEnv(Env):
         for r, rid in enumerate(self._relay_ids):
             drone = self.sim.drones[rid]
             if drone.busy:
+                continue
+            # Post-arrival dwell: force the relay to sit before the next hop.
+            if self._relay_dwell_remaining.get(rid, 0) > 0:
                 continue
             for c, cid in enumerate(self._candidate_ids):
                 target = self.sim.candidates[cid]
@@ -95,6 +105,19 @@ class MissionPlanningEnv(Env):
                 continue
             mask[self.layout.encode_release(m)] = True
         return mask
+
+    def _update_relay_dwell(self, pre_motion_busy: dict[str, bool]) -> None:
+        """Start/count down post-arrival dwell cooldowns for each relay."""
+        assert self.sim is not None
+        for rid in self._relay_ids:
+            busy = bool(self.sim.drones[rid].busy)
+            was_busy = bool(pre_motion_busy.get(rid, False))
+            if was_busy and not busy and self.relay_dwell_decisions > 0:
+                # Just arrived / became idle: begin dwell.
+                self._relay_dwell_remaining[rid] = self.relay_dwell_decisions
+            elif (not busy) and self._relay_dwell_remaining.get(rid, 0) > 0:
+                self._relay_dwell_remaining[rid] -= 1
+            self._relay_was_busy[rid] = busy
 
     def step(self, action: int):
         assert self.sim is not None
@@ -134,6 +157,10 @@ class MissionPlanningEnv(Env):
             assert i0 is not None
             self.sim.release_mapper(self._mapper_ids[i0])
 
+        # Snapshot after the command so same-decision arrivals still start dwell.
+        pre_motion_busy = {
+            rid: bool(self.sim.drones[rid].busy) for rid in self._relay_ids
+        }
         self.sim.step_decision()
         after = self._snapshot_metrics()
 
@@ -144,6 +171,8 @@ class MissionPlanningEnv(Env):
                 self.sim.step_decision()
                 after = self._snapshot_metrics()
 
+        self._update_relay_dwell(pre_motion_busy)
+
         new_cov = max(0.0, after["coverage"] - before["coverage"])
         disconnect = max(0.0, after["disconnect"] - before["disconnect"])
         travel = max(0.0, after["relay_travel"] - before["relay_travel"])
@@ -152,8 +181,14 @@ class MissionPlanningEnv(Env):
         complete = bool(self.sim.metrics.mission_complete and self.sim.terminated)
         terminated = bool(self.sim.terminated)
         truncated = bool(self.sim.truncated) and not terminated
-        # Punish do-nothing: survey still open and nobody is moving/working.
-        stagnant = (not self.sim._survey_complete()) and (not self.sim._any_busy())
+        # Progress idle: incomplete survey with no mapper work / coverage gain.
+        # Relay-only thrash used to cancel the old "nobody busy" idle check.
+        mapper_busy = any(self.sim.drones[mid].busy for mid in self._mapper_ids)
+        stagnant = (
+            (not self.sim._survey_complete())
+            and (new_cov <= 1e-9)
+            and (not mapper_busy)
+        )
         ended_incomplete = (terminated or truncated) and not complete
         mappers_need_link = any(
             self.sim.drones[mid].mode in {DroneMode.SURVEY, DroneMode.TRANSIT}
@@ -190,6 +225,7 @@ class MissionPlanningEnv(Env):
                 "elapsed_s": self.sim.metrics.elapsed_s,
                 "term_reason": self.sim.term_reason,
             },
+            "relay_dwell_remaining": dict(self._relay_dwell_remaining),
         }
         return self._obs(), breakdown.total, terminated, truncated, info
 

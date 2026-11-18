@@ -83,8 +83,11 @@ Reward defaults:
 - ``coverage`` / ``incomplete``: push toward filling the region
 - ``disconnect`` (heavy) + ``connected`` (uptime bonus): prefer keeping links
   over accepting outages
-- ``relay_travel``: discourage relays that wander far then return
-- ``idle``: still blocks the always-hold collapse
+- ``relay_travel`` / ``reposition`` (heavy): discourage candidate thrashing
+- ``idle``: incomplete survey with no mapper coverage progress (relay-only
+  busy thrash no longer cancels this)
+- Action masks also enforce a short **relay dwell** after arrival so A↔B
+  oscillation cannot fire every decision
 
 ## Install
 

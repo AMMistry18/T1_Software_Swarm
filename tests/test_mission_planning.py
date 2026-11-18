@@ -209,6 +209,65 @@ def test_reward_disconnect_costs_more_than_short_relay_travel():
         norm_scale_m=200.0,
     )
     assert disc.disconnect < move.relay_travel + move.reposition
+    # Oscillation must be expensive: a single redeploy is a real cost.
+    assert abs(move.reposition) >= 1.5
+
+
+def test_progress_idle_punishes_relay_only_thrash():
+    """Relay busy without mapper progress must still take the idle penalty."""
+    env = MissionPlanningEnv(request=one_mapper_small(), relay_dwell_decisions=0)
+    env.reset(seed=0)
+    assert env.sim is not None
+    relays = env._relay_ids
+    cands = env._candidate_ids
+    # Bounce a relay while never releasing a mapper.
+    a0 = env.layout.encode_relay(0, 0)
+    a1 = env.layout.encode_relay(0, min(1, len(cands) - 1))
+    idle_hits = 0
+    for i in range(20):
+        mask = env.action_masks()
+        action = a0 if i % 2 == 0 else a1
+        if not mask[action]:
+            action = 0  # hold if dwell/busy blocked
+        _obs, _rew, term, trunc, info = env.step(action)
+        if info["reward"]["idle"] < 0:
+            idle_hits += 1
+        if term or trunc:
+            break
+        # Keep thrashing the same relay once free.
+        if env.sim.drones[relays[0]].busy:
+            _obs, _rew, term, trunc, info = env.step(0)
+            if info["reward"]["idle"] < 0:
+                idle_hits += 1
+            if term or trunc:
+                break
+    assert env.sim.metrics.coverage_fraction == 0.0
+    assert idle_hits >= 5
+
+
+def test_relay_dwell_masks_redeploy_after_arrival():
+    env = MissionPlanningEnv(request=one_mapper_small(), relay_dwell_decisions=3)
+    env.reset(seed=0)
+    assert env.sim is not None
+    # Send relay_0 to candidate 0 and wait until arrival.
+    action = env.layout.encode_relay(0, 0)
+    for _ in range(40):
+        mask = env.action_masks()
+        step_a = action if mask[action] else 0
+        _obs, _rew, term, trunc, _info = env.step(step_a)
+        if term or trunc:
+            break
+        if not env.sim.drones[env._relay_ids[0]].busy:
+            break
+    assert env._relay_dwell_remaining[env._relay_ids[0]] > 0
+    mask = env.action_masks()
+    # While dwelling, no redeploy actions for this relay are legal.
+    for c in range(env.layout.max_candidates):
+        if c >= len(env._candidate_ids):
+            break
+        assert not mask[env.layout.encode_relay(0, c)]
+    # Hold / release may still be available.
+    assert mask[0]
 
 
 def test_lawnmower_covers_small_rectangle():
@@ -228,6 +287,7 @@ def test_network_playback_builds_scene_from_plan():
     config = build_network_config_from_mission(req, result.plan, seed=1)
     assert config["agents"][0]["role"] == "ground_station"
     assert any(a["role"] == "mapper" for a in config["agents"])
+    assert len(config.get("region_polygon_m") or []) >= 3
     out = Path("/tmp/tar_network_playback_test")
     if out.exists():
         import shutil
@@ -237,6 +297,79 @@ def test_network_playback_builds_scene_from_plan():
     assert summary["saved"] is True
     assert (out / "summary.json").exists()
     assert (out / "trajectory_connectivity.png").exists()
+    assert (out / "network_replay.gif").exists()
+    # Coverage overlay should see survey motion and report progress.
+    from tar_swarm.mission_planning.network_playback import (
+        MissionCoverageOverlay,
+        MissionPlanPolicy,
+        build_network_config_from_mission,
+    )
+    from tar_swarm.network.simulator import Simulator
+
+    cfg = build_network_config_from_mission(req, result.plan, seed=1)
+    alts = {d.id: float(d.launch_position_m[2]) for d in req.drones}
+    alts["ground"] = 0.0
+    pol = MissionPlanPolicy(
+        result.plan,
+        arrival_tol_m=float(req.planning.arrival_tolerance_m),
+        agent_altitudes=alts,
+    )
+    sim = Simulator(cfg, policy=pol)
+    sim.mission_coverage = MissionCoverageOverlay(req)
+    sim.run()
+    _covered, frac = sim.mission_coverage.covered_through(sim.history)
+    assert frac > 0.5
+    assert any(
+        (getattr(f, "modes", {}) or {}).get("mapper_1") == "survey"
+        for f in sim.history
+    )
+
+
+def test_mission_plan_policy_waypoints_are_forward_only():
+    """Overshoot near a corner must not retarget an earlier waypoint (shake)."""
+    from tar_swarm.mission_planning.network_playback import MissionPlanPolicy
+    from tar_swarm.mission_planning.schemas import (
+        ActionKind,
+        MissionPlan,
+        WaypointAction,
+    )
+
+    plan = MissionPlan(
+        mission_id="shake-regression",
+        actions=[
+            WaypointAction(
+                action_id="m1",
+                drone_id="mapper_1",
+                kind=ActionKind.SURVEY,
+                waypoints_m=[
+                    (0.0, 0.0, 10.0),
+                    (10.0, 0.0, 10.0),
+                    (10.0, 10.0, 10.0),
+                ],
+                depends_on=[],
+            )
+        ],
+        expected_duration_s=60.0,
+        expected_coverage_fraction=1.0,
+    )
+    pol = MissionPlanPolicy(
+        plan, arrival_tol_m=1.0, agent_altitudes={"mapper_1": 10.0}
+    )
+    # At the start corner -> advance to the middle waypoint.
+    pos = {"mapper_1": np.array([0.0, 0.0, 10.0])}
+    g0 = pol.target("mapper_1", 0.0, pos)
+    assert pol._wp_index["mapper_1"] == 1
+    assert np.allclose(g0[:2], (10.0, 0.0))
+    # Just past the middle corner -> advance to the last waypoint.
+    pos["mapper_1"] = np.array([10.2, 0.4, 10.0])
+    g1 = pol.target("mapper_1", 0.1, pos)
+    assert pol._wp_index["mapper_1"] == 2
+    assert np.allclose(g1[:2], (10.0, 10.0))
+    # Closer to earlier corners than to the goal; must not go backward.
+    pos["mapper_1"] = np.array([5.0, 2.0, 10.0])
+    g2 = pol.target("mapper_1", 0.2, pos)
+    assert pol._wp_index["mapper_1"] == 2
+    assert np.allclose(g2[:2], (10.0, 10.0))
 
 
 def test_reward_idle_and_incomplete_block_hold_exploit():
@@ -331,6 +464,39 @@ def test_baseline_and_export_replay(tmp_path: Path):
     out.write_text(plan.model_dump_json(), encoding="utf-8")
     loaded = json.loads(out.read_text())
     assert loaded["schema_version"] == "1.0.0"
+
+
+def test_compile_unique_ids_and_interleaved_release():
+    """Relay revisits get unique IDs; survey is not gated on later redeploys."""
+    req = one_mapper_small()
+    scenario = prepare_scenario(req)
+    # Synthetic thrash: redeploy same candidate twice, release between.
+    cands = [c.id for c in scenario.candidates]
+    assert len(cands) >= 2
+    rid = req.relays[0].id
+    mid = req.mappers[0].id
+    trace = [
+        {"cmd": "relay", "relay": rid, "candidate": cands[0]},
+        {"cmd": "hold"},
+        {"cmd": "release", "mapper": mid},
+        {"cmd": "hold"},
+        {"cmd": "relay", "relay": rid, "candidate": cands[0]},  # revisit
+        {"cmd": "hold"},
+        {"cmd": "relay", "relay": rid, "candidate": cands[1]},
+    ]
+    # Need a finished sim for metrics/duration fields.
+    base = static_relay_baseline(scenario)
+    plan = compile_from_sim(scenario, base.sim, trace)
+    ids = [a.action_id for a in plan.actions]
+    assert len(ids) == len(set(ids))
+    deploys = [a for a in plan.actions if a.action_id.startswith("relay_deploy_")]
+    assert len(deploys) == 3
+    surveys = [a for a in plan.actions if a.kind.value == "survey"]
+    assert surveys
+    # First survey must not depend on the post-release redeploys.
+    first_survey = surveys[0]
+    later_deploy_ids = {a.action_id for a in deploys[1:]}
+    assert later_deploy_ids.isdisjoint(first_survey.depends_on)
 
 
 def test_plan_mission_baseline_and_failure():

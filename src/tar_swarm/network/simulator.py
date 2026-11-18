@@ -8,7 +8,7 @@ shows the change at once.
 """
 
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -29,6 +29,9 @@ class Frame:
     graph: GraphSnapshot
     reachable: frozenset[str]
     graph_updated: bool
+    # Optional per-agent activity labels (e.g. mission-playback "survey").
+    # Empty for the default network demos.
+    modes: dict[str, str] = field(default_factory=dict)
 
 
 class Simulator:
@@ -121,6 +124,8 @@ class Simulator:
             if target[2] != self.positions[name][2]:
                 raise ValueError("Policy targets must preserve each agent's altitude")
             targets[name] = target
+        # MissionPlanPolicy (and similar) may expose .modes after target().
+        modes = dict(getattr(self.policy, "modes", {}) or {})
         return Frame(
             self.time_s,
             positions,
@@ -129,6 +134,7 @@ class Simulator:
             self.graph,
             self.reachable,
             updated,
+            modes,
         )
 
     def step(self) -> Frame:

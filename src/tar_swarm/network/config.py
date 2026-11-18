@@ -102,6 +102,17 @@ def validate_config(config: dict) -> dict:
             raise ValueError("Each obstacle must be [x_min, y_min, x_max, y_max]")
         if box[0] >= box[2] or box[1] >= box[3]:
             raise ValueError("Each obstacle needs x_min < x_max and y_min < y_max")
+    # Optional survey region polygon [[x, y], ...] for map drawing only.
+    # Mission-planning playback sets this; the default network demo leaves it out.
+    config.setdefault("region_polygon_m", [])
+    region = config["region_polygon_m"]
+    if region:
+        if len(region) < 3:
+            raise ValueError("region_polygon_m needs at least 3 vertices")
+        for point in region:
+            pt = np.asarray(point, dtype=float)
+            if pt.shape != (2,) or not np.isfinite(pt).all():
+                raise ValueError("region_polygon_m vertices must be finite [x, y]")
     # The run's length and the time between link checks must each be a whole
     # number of steps (step_count raises if not; the counts aren't needed here).
     step_count(config["duration_s"], config["dt_s"])

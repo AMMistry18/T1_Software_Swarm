@@ -103,16 +103,17 @@ def validate_mission(
                 and action.kind != ActionKind.HOLD
             ):
                 continue
-            if action.kind == ActionKind.HOLD:
-                completed.add(aid)
-                del pending[aid]
-                continue
             wps = [np.asarray(w, dtype=float) for w in action.waypoints_m]
+            if not wps:
+                # Empty HOLD/RELEASE tokens still honor hold_s at the current pose.
+                wps = [positions[action.drone_id].copy()]
             active[action.drone_id] = {
                 "action": action,
                 "waypoints": wps,
                 "index": 0,
                 "surveying": action.kind == ActionKind.SURVEY,
+                "hold_s": float(action.hold_s) if action.kind == ActionKind.HOLD else 0.0,
+                "hold_remaining_s": None,
             }
             del pending[aid]
 
@@ -126,6 +127,14 @@ def validate_mission(
 
         prev = {k: v.copy() for k, v in positions.items()}
         for did, st in list(active.items()):
+            # Timed HOLD after arrival: remain parked until hold_s elapses.
+            if st.get("hold_remaining_s") is not None:
+                st["hold_remaining_s"] -= dt
+                flight_used[did] += dt
+                if st["hold_remaining_s"] <= 1e-9:
+                    completed.add(st["action"].action_id)
+                    del active[did]
+                continue
             target = st["waypoints"][st["index"]]
             new_pos = move_towards(positions[did], target, speeds[did] * dt)
             if st["surveying"]:
@@ -135,8 +144,12 @@ def validate_mission(
             if float(np.linalg.norm(positions[did] - target)) <= tol:
                 st["index"] += 1
                 if st["index"] >= len(st["waypoints"]):
-                    completed.add(st["action"].action_id)
-                    del active[did]
+                    hold_s = float(st.get("hold_s") or 0.0)
+                    if hold_s > 1e-9:
+                        st["hold_remaining_s"] = hold_s
+                    else:
+                        completed.add(st["action"].action_id)
+                        del active[did]
 
         # Idle vehicles still burn budget (hover).
         for did in positions:

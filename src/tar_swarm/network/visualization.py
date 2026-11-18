@@ -33,6 +33,7 @@ import numpy as np
 from matplotlib.collections import LineCollection
 from matplotlib.colors import to_rgba
 from matplotlib.patches import Circle, Rectangle
+from matplotlib.patches import Polygon as MplPolygon
 
 from tar_swarm.network.routing import route
 from tar_swarm.network.transport import delay_stats_ms
@@ -137,7 +138,12 @@ def packet_panel_text(transport, drones):
 
 
 def setup_axes(ax, config):
-    """Draw the empty map: a square grid, the map's outline, and axis labels."""
+    """Draw the empty map: a square grid, the map's outline, and axis labels.
+
+    If ``region_polygon_m`` is present (mission-planning playback), draw that
+    survey footprint. Otherwise keep the default plot-bounds rectangle only so
+    existing network demos look the same.
+    """
     (xmin, xmax), (ymin, ymax) = config["plot_bounds_m"]
     step = config["grid_step_m"]
     # A little room around the map, so drones on its edge show in full.
@@ -155,17 +161,27 @@ def setup_axes(ax, config):
     ax.set_yticks(np.arange(ymin, ymax + step / 2, step), minor=True)
     ax.grid(which="both", color="0.88", linewidth=0.8)  # both = every tick
     ax.set_axisbelow(True)  # grid lines go behind everything else
-    ax.add_patch(
-        Rectangle(
-            (xmin, ymin),
-            xmax - xmin,
-            ymax - ymin,
-            fill=False,
-            edgecolor="0.45",
-            linewidth=1.5,
-            zorder=0.6,
+    region = config.get("region_polygon_m") or []
+    if len(region) >= 3:
+        # Mission playback: survey footprint is the map outline. Skip the
+        # plot-bounds rectangle so it does not look like a second "default box".
+        xs = [float(p[0]) for p in region] + [float(region[0][0])]
+        ys = [float(p[1]) for p in region] + [float(region[0][1])]
+        ax.fill(xs, ys, color="#cfe8ff", alpha=0.55, zorder=0.35, label="survey region")
+        ax.plot(xs, ys, color="0.15", linewidth=2.0, zorder=0.45)
+    else:
+        # Default network demos: keep the plot-bounds rectangle as the map edge.
+        ax.add_patch(
+            Rectangle(
+                (xmin, ymin),
+                xmax - xmin,
+                ymax - ymin,
+                fill=False,
+                edgecolor="0.45",
+                linewidth=1.5,
+                zorder=0.6,
+            )
         )
-    )
     ax.set_xlabel("East x (m)")
     ax.set_ylabel("North y (m)")
 
@@ -186,7 +202,22 @@ class NetworkView:
         self.live = live
         self.selected = None  # the ID of the drone to highlight, if any
         self.route_offset = 0.0  # how far the route dashes have slid (see update)
+        self._coverage_artists = []
+        self._coverage_fraction = None
         setup_axes(ax, simulator.config)
+        # Legend proxy when mission playback attaches a coverage overlay.
+        if getattr(simulator, "mission_coverage", None) is not None:
+            ax.add_patch(
+                MplPolygon(
+                    [[0, 0]],
+                    closed=True,
+                    facecolor="#4c78a8",
+                    edgecolor="none",
+                    alpha=0.35,
+                    label="scanned",
+                    visible=False,
+                )
+            )
         # Which roles' range circles are shown (the checkboxes flip these).
         self.show_range = dict.fromkeys(STYLES, True)
         self.range_circles = {}  # drone ID -> its radio-range circle
@@ -260,6 +291,7 @@ class NetworkView:
     def moving_artists(self):
         """Everything that can change between frames, in drawing order."""
         return [
+            *self._coverage_artists,
             *self.range_circles.values(),
             *self.obstacle_patches.values(),
             *self.fixed_artists[:-1],
@@ -319,6 +351,7 @@ class NetworkView:
         self.selection.set_offsets(np.reshape(chosen, (-1, 2)))
         self._update_circles_and_labels(names, xy, frame)
         self._update_obstacles()
+        self._update_coverage()
         if not self.live:  # the live window refreshes the panel itself
             self.packet_panel.set_text(packet_panel_text(sim.transport, names))
 
@@ -331,12 +364,24 @@ class NetworkView:
         if sim.plan_stretch is not None:  # automatic placement is on
             # f"{x:.0%}" writes 0.833 as "83%".
             status += f"      planned hops up to {sim.plan_stretch:.0%}"
+        if self._coverage_fraction is not None:
+            status += f"      coverage = {self._coverage_fraction:.2f}"
         self.ax.set_title(
             f"t = {frame.time_s:.1f} s      {status}",
             fontsize=12,
             color="darkred" if cut_off else "darkgreen",
         )
         return []
+
+    def _update_coverage(self):
+        """Shade surveyed swath when mission playback attached an overlay."""
+        overlay = getattr(self.simulator, "mission_coverage", None)
+        if overlay is None:
+            self._coverage_fraction = None
+            return
+        self._coverage_artists, self._coverage_fraction = overlay.redraw(
+            self.ax, self.simulator.history, self._coverage_artists
+        )
 
     def _update_circles_and_labels(self, names, xy, frame):
         """Give each drone a range circle and a name tag; drop removed drones'."""

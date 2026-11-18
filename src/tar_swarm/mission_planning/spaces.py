@@ -20,8 +20,9 @@ Action indexing (Discrete):
 - ``1+R*C ..`` release mapper m (``1 + R*C + m``)
 
 Action masks: inactive slots, busy drones, exhausted segments, unknown
-candidates, and redundant relay targets are masked. Hold stays available.
-Predictive connectivity feasibility is NOT folded into the mask.
+candidates, redundant relay targets, and relays still inside a post-arrival
+dwell cooldown are masked. Hold stays available. Predictive connectivity
+feasibility is NOT folded into the mask.
 
 Transitions: one command per env step, then ``decision_dt_s`` of concurrent
 kinematics. Mapper segment order is deterministic; RL chooses relay placement
@@ -29,10 +30,11 @@ and release timing only.
 
 Rewards (configurable; each component logged): coverage gain, completion bonus,
 ``connected`` uptime bonus, disconnect / relay-travel / reposition / time /
-violation penalties, plus ``idle`` while survey incomplete and no drone is
-busy, and ``incomplete`` when the episode ends without mission_complete
-(scaled by uncovered fraction). Defaults price disconnect above casual travel
-so ignoring RF is worse than placing relays.
+violation penalties, plus ``idle`` while survey is incomplete and no mapper is
+making coverage progress (relay-only motion does not cancel idle), and
+``incomplete`` when the episode ends without mission_complete (scaled by
+uncovered fraction). Defaults price disconnect and reposition so ignoring RF
+or thrashing candidates is worse than steady placement + release.
 
 Endings: ``terminated`` after survey+return resolution; ``truncated`` on
 time-limit (not claimed as task failure).

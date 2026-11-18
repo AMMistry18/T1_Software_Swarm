@@ -12,8 +12,8 @@ class RewardWeights:
     Priority order for planning quality:
     1. Cover the region (dense coverage + incomplete terminal).
     2. Keep mappers connected (disconnect cost dominates travel).
-    3. Prefer short relay moves (travel) over wandering then returning.
-    4. Still punish pure hold via ``idle`` so PPO cannot collapse to no-ops.
+    3. Prefer short relay moves (travel / reposition) over thrashing.
+    4. Punish no-progress via ``idle`` (including relay-only busy thrash).
     """
 
     coverage: float = 8.0
@@ -23,10 +23,11 @@ class RewardWeights:
     # Bonus per decision when every active surveying/transit mapper is linked.
     connected: float = 0.5
     relay_travel: float = 0.4
-    reposition: float = 0.15
+    # Per relay redeploy; high enough that A↔B oscillation is expensive.
+    reposition: float = 2.0
     time: float = 0.05
     violation: float = 2.0
-    # Per decision while survey incomplete and no drone is busy (do-nothing).
+    # Per decision with incomplete survey and no coverage progress from mapper work.
     idle: float = 1.0
     # Terminal: -incomplete * (1 - coverage) when episode ends incomplete.
     incomplete: float = 40.0
@@ -91,7 +92,9 @@ def compute_reward(
     - Hovering advances time and burns flight budget in the simulator.
     - Travel distance is measured from actual motion, not teleportation.
     - Completion requires validated return when configured.
-    - Full-episode hold is punished via ``idle`` / ``incomplete``.
+    - ``idle`` (from the env) punishes incomplete survey with no mapper progress,
+      so relay-only thrash cannot cancel the penalty by staying "busy".
+    - ``reposition`` is priced to discourage A↔B candidate oscillation.
     - Disconnect is priced above typical relay travel so ignoring RF fails.
     """
     br = RewardBreakdown()

@@ -19,7 +19,7 @@ relying only on the planning GIF.
 | Regions, lawnmower, MaskablePPO, coverage GIF | `mission_planning/` | Fast; distance-graph connectivity |
 | Role radio ranges, obstacles/LOS, packets, latency, live UI | `network/` | Higher fidelity RF + transport |
 | Shared kinematics / graph helpers | both | `move_towards`, `build_graph`, thin link adapter |
-| **Phase 1 bridge** | `mission_planning/network_playback.py` | `MissionPlan` → network scene + `MissionPlanPolicy` |
+| **Phase 1 bridge** | `mission_planning/network_playback.py` + `compile.py` | `MissionPlan` → network scene + `MissionPlanPolicy`; compile keeps unique timed relay/release order so network paths match the planner rollout |
 
 ### Phase 1 commands
 
