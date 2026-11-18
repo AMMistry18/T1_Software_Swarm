@@ -155,7 +155,14 @@ python -m tar_swarm.mission_planning.cli replay \
 python -m tar_swarm.mission_planning.cli replay \
   --scenario one_mapper_small --baseline static \
   --animate --output experiments/results/plan_replay_live
+
+# Preferred RF-aware playback: run the plan in the packet/network simulator
+python -m tar_swarm.mission_planning.cli network-play \
+  --scenario one_mapper_small --fallback search --animate \
+  --output experiments/results/network_play_search
 ```
+
+See `docs/mission_network_merge.md` for the planning↔network merge roadmap.
 
 On WSL, `--gif` is the reliable path (open the `.gif` in Windows). `--animate`
 needs a GUI backend / WSLg Matplotlib window.

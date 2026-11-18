@@ -118,6 +118,7 @@ def cmd_replay(args):
     )
     plan = compile_from_sim(scenario, base.sim, base.command_trace)
     plan_path = Path(args.output) / "plan.json"
+    plan_path.parent.mkdir(parents=True, exist_ok=True)
     plan_path.write_text(plan.model_dump_json(indent=2), encoding="utf-8")
     executor = MissionExecutor(scenario, plan)
     report = executor.run()
@@ -130,6 +131,37 @@ def cmd_replay(args):
     if args.animate:
         # Live window; close it to return. GIF was also saved above.
         animate_replay(scenario, base.sim, show=True, save_path=None)
+
+
+def cmd_network_play(args):
+    """Play a planned mission inside the packet/network simulator."""
+    from tar_swarm.mission_planning.network_playback import play_mission_on_network
+
+    req = _load_request(args)
+    if args.plan:
+        plan = MissionPlan.model_validate_json(
+            Path(args.plan).read_text(encoding="utf-8")
+        )
+    else:
+        result = plan_mission(
+            req,
+            checkpoint=args.checkpoint,
+            fallback=args.fallback,
+        )
+        if not result.success or result.plan is None:
+            msg = result.failure.message if result.failure else "planning failed"
+            raise SystemExit(f"Cannot play mission: {msg}")
+        plan = result.plan
+
+    out = Path(args.output)
+    summary = play_mission_on_network(
+        req,
+        plan,
+        out,
+        animate=bool(args.animate),
+        seed=int(args.seed),
+    )
+    print(json.dumps(summary, indent=2, default=str))
 
 
 def cmd_smoke(args):
@@ -260,6 +292,28 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--output", required=True)
     sp.add_argument("--timesteps", type=int, default=512)
     sp.set_defaults(func=cmd_smoke)
+
+    sp = sub.add_parser(
+        "network-play",
+        help="Replay a planned mission in the packet/network simulator",
+    )
+    add_req(sp)
+    sp.add_argument("--plan", default=None, help="Existing MissionPlan JSON")
+    sp.add_argument("--checkpoint", default=None, help="RL checkpoint zip")
+    sp.add_argument(
+        "--fallback",
+        choices=["static", "search"],
+        default="search",
+        help="Baseline used when --plan/--checkpoint are omitted",
+    )
+    sp.add_argument("--output", required=True)
+    sp.add_argument(
+        "--animate",
+        action="store_true",
+        help="Open the network live window (links, packets, ranges)",
+    )
+    sp.add_argument("--seed", type=int, default=0)
+    sp.set_defaults(func=cmd_network_play)
 
     return p
 

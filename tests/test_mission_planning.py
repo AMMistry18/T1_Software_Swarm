@@ -216,6 +216,29 @@ def test_lawnmower_covers_small_rectangle():
     assert scenario.coverage_gap_area_m2 / scenario.total_survey_area_m2 < 0.02
 
 
+def test_network_playback_builds_scene_from_plan():
+    from tar_swarm.mission_planning.network_playback import (
+        build_network_config_from_mission,
+        play_mission_on_network,
+    )
+
+    req = one_mapper_small()
+    result = plan_mission(req, fallback="search")
+    assert result.success and result.plan is not None
+    config = build_network_config_from_mission(req, result.plan, seed=1)
+    assert config["agents"][0]["role"] == "ground_station"
+    assert any(a["role"] == "mapper" for a in config["agents"])
+    out = Path("/tmp/tar_network_playback_test")
+    if out.exists():
+        import shutil
+
+        shutil.rmtree(out)
+    summary = play_mission_on_network(req, result.plan, out, animate=False, seed=1)
+    assert summary["saved"] is True
+    assert (out / "summary.json").exists()
+    assert (out / "trajectory_connectivity.png").exists()
+
+
 def test_reward_idle_and_incomplete_block_hold_exploit():
     weights = RewardWeights()
     # Pure hold step with stagnation must be much worse than time-only.
