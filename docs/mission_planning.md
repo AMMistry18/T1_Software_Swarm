@@ -89,6 +89,13 @@ Reward defaults:
 - Action masks also enforce a short **relay dwell** after arrival so A↔B
   oscillation cannot fire every decision
 
+## MVP demo artifacts
+
+Shared checkpoint: `experiments/checkpoints/incoming/best_model.zip`.
+
+Side-by-side demos (baseline | RL planner | network):
+[docs/assets/mission_planning_mvp/](assets/mission_planning_mvp/).
+
 ## Install
 
 ```bash

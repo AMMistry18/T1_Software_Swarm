@@ -32,6 +32,10 @@ python -m tar_swarm.mission_planning.cli train \
 Library API: `plan_mission(request, checkpoint) -> PlanningResult`.
 Colab starter notebook: [notebooks/train_mission_planning_colab.ipynb](notebooks/train_mission_planning_colab.ipynb).
 
+**MVP handoff (branch `network`):** shared weights at
+`experiments/checkpoints/incoming/best_model.zip`, demo GIFs under
+[docs/assets/mission_planning_mvp/](docs/assets/mission_planning_mvp/).
+
 ## Basic network simulator
 
 A separate **basic network simulator** supports fixed-step kinematic waypoint
