@@ -2,7 +2,7 @@
 # the bottom-left corner (0, 0, 0); x points east, y north, z up. The radio ranges
 # and the speeds are placeholders, not measured VoCore2 or airframe values.
 # Robert's original 135 m demo lives on as SMALL_DEMO in tests/test_network.py.
-seed: 7                 # Reserved reproducible RNG; baseline has no randomness.
+seed: 7                 # Starts the random numbers (Wi-Fi's countdowns): same seed, same run.
 dt_s: 0.1
 duration_s: 300.0       # 5 simulated minutes
 graph_interval_s: 0.5   # Must be an integer multiple of dt_s.
@@ -19,10 +19,18 @@ new_relay_speed_m_s: 10.0   # TODO(source): placeholder network-drone speed
 new_mapper_altitude_m: 10.0  # Height of mapping drones added with shift + right-click.
 new_mapper_speed_m_s: 4.0   # TODO(source): placeholder mapping-drone speed
 # Packets (network/transport.py). Packet kinds, sizes, and rates follow the team's
-# packet spec and live in transport.py; these two are radio settings.
+# packet spec and live in transport.py; these are radio settings.
 packets:
-  link_rate_mbps: 10.0          # TODO(source): real-world Wi-Fi speed per link; team plans for 1, 10, 30 (spec sheet: up to 300)
-  per_packet_overhead_s: 0.0003 # TODO(source): channel wait + preamble + radio ACK per packet; plausible 0.00015-0.0005
+  # A link slows down as its two drones get farther apart (weaker signal). Each
+  # zone: up to this fraction of the link's radio range, the link runs at this
+  # speed. The team plans for 30, 10, and 1 Mb/s (VoCore2 spec sheet: up to 300).
+  # TODO(source): measure speed vs distance on the bench; plausible zone edges
+  # 0.15-0.5 (30 Mb/s) and 0.35-0.7 (10 Mb/s).
+  link_speed_zones:
+    - {up_to_range_fraction: 0.3, mbps: 30.0}
+    - {up_to_range_fraction: 0.6, mbps: 10.0}
+    - {up_to_range_fraction: 1.0, mbps: 1.0}
+  per_packet_overhead_s: 0.0003 # TODO(source): gaps + preamble + radio ACK per packet (the random countdown comes on top); plausible 0.00015-0.0005
 obstacles_m: []           # Boxes [x_min, y_min, x_max, y_max] that block signals.
 # Counts are determined by this list; IDs must be unique.
 agents:

@@ -16,6 +16,10 @@ with the mouse while it plays:
 - space pauses and resumes; + and - change the simulation speed
 - moving green dashes show each mapping drone's route to the base (routing.py),
   flowing the way its messages travel
+- packets (transport.py): a link is drawn thicker the faster it is, a drone's
+  name tag says how many packets wait in its outbox, and the panel at the top
+  left shows recent delays and how many keyframes and commands got through.
+  Single packets are too quick to draw: each is on the air for 1-10 ms.
 
 The clock keeps running until the window is closed (duration_s only ends headless
 runs). Drawing never moves the clock; only `InteractiveWindow.update` does.
@@ -31,6 +35,7 @@ from matplotlib.colors import to_rgba
 from matplotlib.patches import Circle, Rectangle
 
 from tar_swarm.network.routing import route
+from tar_swarm.network.transport import delay_stats_ms
 from tar_swarm.strategies.fixed_relay import optimal_chain_plan
 
 # How each kind of drone looks: (marker shape, color, marker area, legend name).
@@ -59,6 +64,12 @@ LEFT_BUTTON, RIGHT_BUTTON = 1, 3  # matplotlib numbers the mouse buttons 1, 2, 3
 # They slide DASH_SPEED units per real second toward the line's start.
 ROUTE_DASHES = (4, 3)
 DASH_SPEED = 14
+# The packet panel's delays cover each stream's latest RECENT packets, so they
+# follow your edits instead of averaging over the whole run. Its text is slow to
+# draw (about 20 ms, as long as everything else together), so the live window
+# rewrites it only once every PANEL_REFRESH_S real seconds.
+RECENT = 50
+PANEL_REFRESH_S = 1.0
 
 HELP_TEXT = (
     "click a drone, then the map: fly it there\n"
@@ -69,8 +80,38 @@ HELP_TEXT = (
     "right-click an obstacle: remove it\n"
     "space: pause   +/-: speed   esc: deselect\n"
     "ring: green = reaches base, red = cut off\n"
-    "green dashes: messages to the base"
+    "green dashes: messages to the base\n"
+    "thicker link: faster (30, 10, or 1 Mb/s)"
 )
+
+
+def link_width(speed_bps):
+    """How thick to draw a link, in points: thicker = faster, on a log scale, so
+    1 Mb/s -> 1, 10 Mb/s -> 3, 30 Mb/s -> about 4."""
+    return max(0.5, 1 + 2 * np.log10(speed_bps / 1e6))
+
+
+def packet_panel_text(transport):
+    """The packet panel: 95th-percentile delays over each stream's latest RECENT
+    packets, one line per drone, then how many keyframes and commands got
+    through so far."""
+
+    def p95(delays_s):
+        stats = delay_stats_ms(delays_s[-RECENT:])  # [-50:] = the last 50 items
+        return "-" if stats is None else f"{stats['p95']:.0f} ms"
+
+    lines = [f"Delays, 95% faster than this (last {RECENT}):"]
+    drones = sorted(set(transport.health_delays_s) | set(transport.round_trips_s))
+    for drone in drones:  # .get(drone, []): no list yet means no packets yet
+        health = p95(transport.health_delays_s.get(drone, []))
+        command = p95(transport.round_trips_s.get(drone, []))
+        lines.append(f"  {drone}: Health {health}, command + ACK {command}")
+    lines.append(f"  LiDAR keyframe: {p95(transport.keyframe_delays_s)}")
+    whole, made = len(transport.keyframe_delays_s), transport.keyframes_made
+    lines.append(f"Keyframes complete: {whole} of {made}")
+    acked = sum(len(trips) for trips in transport.round_trips_s.values())
+    lines.append(f"Commands acknowledged: {acked} of {transport.commands_made}")
+    return "\n".join(lines)
 
 
 def setup_axes(ax, config):
@@ -163,6 +204,20 @@ class NetworkView:
             Rectangle((0, 0), 0, 0, fill=False, edgecolor="0.2", linestyle="--")
         )
         self.box_preview.set_visible(False)
+        # The packet panel in the map's top-left corner. transform=ax.transAxes
+        # places it by fractions of the map's box (0 to 1), not by meters. It is
+        # not one of the moving artists: the live window refreshes it itself.
+        self.packet_panel = ax.text(
+            0.01,
+            0.99,
+            "",
+            transform=ax.transAxes,
+            va="top",
+            fontsize=8,
+            linespacing=1.3,
+            zorder=5,
+            bbox={"facecolor": "white", "edgecolor": "0.7", "alpha": 0.85},
+        )
         # The artists that exist for the whole run, in drawing order (bottom
         # first). Circles, obstacles, and name tags come and go.
         self.fixed_artists = [
@@ -198,10 +253,14 @@ class NetworkView:
         xy = {name: frame.positions[name][:2] for name in names}
         mappers = [name for name in names if sim.roles[name] == "mapper"]
 
-        # Links: one (start, end) pair of map points per working link.
-        self.links.set_segments(
-            [(xy[a], xy[b]) for a, b in frame.graph.edges if a in xy and b in xy]
+        # Links: one (start, end) pair of map points per working link, drawn
+        # thicker the faster it is (link speed by distance, transport.py).
+        speeds = sim.transport.link_speeds_bps(
+            frame.graph, sim.roles, frame.positions, sim.link_model.range_m
         )
+        edges = [(a, b) for a, b in frame.graph.edges if a in xy and b in xy]
+        self.links.set_segments([(xy[a], xy[b]) for a, b in edges])
+        self.links.set_linewidths([link_width(speeds[a, b]) for a, b in edges])
         # Routes: each mapper's fewest-hops path to the base (routing.py). Each
         # line starts at the base, because the dashes slide toward a line's start:
         # that way they flow toward the base, like the mapper's messages.
@@ -237,6 +296,8 @@ class NetworkView:
         self.selection.set_offsets(np.reshape(chosen, (-1, 2)))
         self._update_circles_and_labels(names, xy, frame)
         self._update_obstacles()
+        if not self.live:  # the live window refreshes the panel itself
+            self.packet_panel.set_text(packet_panel_text(sim.transport))
 
         cut_off = [name for name in mappers if name not in frame.reachable]
         if len(mappers) == 1:
@@ -294,6 +355,11 @@ class NetworkView:
             # A turned-off (inactive) drone has no working radio, so no circle.
             circle.set_visible(self.show_range[role] and frame.active[name])
             self.labels[name].xy = xy[name]
+            # The name tag also counts the packets waiting in the drone's outbox.
+            # (.get(name, []) doesn't add an empty outbox to the defaultdict.)
+            waiting = len(sim.transport.outboxes.get(name, []))
+            tag = f"{name} ({waiting} waiting)" if waiting else name
+            self.labels[name].set_text(tag)
 
     def _update_obstacles(self):
         """Give each obstacle box a gray rectangle; drop removed boxes' ones."""
@@ -352,6 +418,7 @@ class InteractiveWindow:
         # The real-time clock, in seconds. Tests swap in a pretend clock.
         self.clock = time.perf_counter
         self.last_frame_s = self.clock()
+        self.last_panel_s = -np.inf  # when the packet panel was last rewritten
 
         self.fig = plt.figure(figsize=WINDOW_SIZE_IN)
         # fig.add_axes([left, bottom, width, height]) makes a drawing area; the
@@ -484,7 +551,16 @@ class InteractiveWindow:
             # dash + gap, which looks the same as no slide at all.
             slid = self.view.route_offset + DASH_SPEED * real_s
             self.view.route_offset = slid % sum(ROUTE_DASHES)
+        if now - self.last_panel_s >= PANEL_REFRESH_S:
+            self.last_panel_s = now
+            self.refresh_packet_panel()
         self.redraw()
+
+    def refresh_packet_panel(self):
+        """Rewrite the packet panel. It is one of the still parts, so this asks
+        for a full redraw; update() does it once every PANEL_REFRESH_S."""
+        self.view.packet_panel.set_text(packet_panel_text(self.simulator.transport))
+        self.fig.canvas.draw_idle()
 
     # Mouse
 

@@ -74,9 +74,14 @@ that moment; `completed` says whether it reached `duration_s`.
 The ring around each drone is green when it can reach the ground station and red
 when it can't; a dashed line and an `x` show where a drone is flying. Moving green
 dashes trace each mapper's route to the ground station (`network/routing.py`),
-flowing toward the ground station like the mapper's messages. The
-toolbar's zoom and pan tools work as usual; mouse edits are ignored while one of
-them is on.
+flowing toward the ground station like the mapper's messages. Each link is drawn
+thicker the faster it is (1, 10, or 30 Mb/s by default), a drone's name tag says
+how many packets wait in its outbox, and the panel in the map's top-left corner
+shows recent delays (each drone's Health and command round trip, and whole LiDAR
+keyframes; the 95th percentile of each stream's last 50) and how many
+keyframes and commands got through. Single packets aren't drawn: each is on the
+air for only 1-10 ms. The toolbar's zoom and pan tools work as usual; mouse
+edits are ignored while one of them is on.
 
 **Optimal positions.** For n network drones there are n + 1 hops. Each hop's
 limit is the smaller range of its two ends. The plan puts the drones on the
@@ -141,17 +146,38 @@ does not move. Empty waypoint sequences hold the initial position.
   broken the same way every time. It re-routes instantly when links change
   (batman takes a few seconds).
 - Packets (`network/transport.py`): each step, every active drone makes Health
-  packets (10 Hz) for the base, each mapper makes LiDAR keyframes (2 Hz, 10,000
-  bytes cut into 9 chunks of at most 1200 bytes), and the base makes Reposition
-  packets (5 Hz) for each network drone. Sizes follow the team's packet spec. Every
-  drone (and the base) has an outbox; one radio talks at a time (real radios settle turns
-  themselves by listening and random waits; the simulation uses round robin as a
-  stand-in), and it sends its
-  packet with the highest score = head start (Health 2 s, Reposition 1 s, LiDAR
-  0 s) + seconds waited. Each send moves one packet one hop and takes
-  `per_packet_overhead_s` + bytes x 8 / `link_rate_mbps` (plus 90 bytes of
-  UDP/IP/batman/Wi-Fi headers). Packets with no route are dropped. The summary
-  reports made / delivered / dropped / waiting and delays per kind.
+  packets (10 Hz) for the base; each mapper makes LiDAR keyframes (2 Hz, 10,000
+  bytes cut into 9 chunks of at most 1200 bytes) and Degeneracy packets (10 Hz,
+  as if its LiDAR were degenerate all the time: the worst case); and the base
+  makes Reposition packets (5 Hz) for each network drone, pose corrections (1 Hz)
+  for each mapper, and C2 commands (one every 5 s) for every drone. The spec gives
+  no rate for these "event" packets, so those rates are placeholders in
+  `RATE_HZ`. Sizes come from the spec's byte formats in `network/messages.py`.
+- Every drone (and the base) has an outbox, and one radio talks at a time. Turns
+  work like Wi-Fi's: each drone with something to send counts down a random 0-15
+  slots of 9 microseconds, and the lowest count talks; two drones that tie both
+  talk, their packets collide, and they try again with the range doubled (up to
+  0-1023). The talker sends its packet with the highest score = head start (C2
+  commands, ACKs, and pose corrections 3 s; Health and Degeneracy 2 s;
+  Reposition 1 s; LiDAR 0 s) + seconds waited. Each send moves one packet one hop
+  and takes the countdown + `per_packet_overhead_s` + bytes x 8 / the link's
+  speed (plus 90 bytes of UDP/IP/batman/Wi-Fi headers). A link's speed falls
+  with distance, in zones set by `link_speed_zones` as fractions of the link's
+  radio range (default: 30 Mb/s up to 30% of the range, 10 Mb/s up to 60%,
+  1 Mb/s out to the edge). The config's `seed` starts the random numbers, so the
+  same seed repeats a run exactly.
+- A drone that receives a C2 command sends an ACK back at once. If the ACK
+  isn't back at the base within 50 ms, the base sends the command again, up to 5
+  times, then counts it as failed. Packets with no route are dropped, and a
+  dropped LiDAR chunk takes the rest of its keyframe with it (the base can only
+  rebuild complete keyframes).
+- The summary reports made / delivered / dropped / waiting and delays per kind;
+  Health delays per sending drone (`delay_ms_by_drone`), since a relay next to
+  the base and a mapper further out make different trips; whole keyframes
+  (`keyframes`: made, delivered whole, lost, in flight, delay); command round
+  trips (`round_trips`: issued, acknowledged, failed, resends, and round-trip time
+  per drone);
+  and the number of collisions.
 - Tick zero records initial positions and graph. Each subsequent tick moves all
   drones using targets from the previous snapshot, advances the integer clock,
   updates the graph if due, then samples state and next targets. Motion updates
@@ -193,7 +219,7 @@ Each run saves:
 |---|---|
 | `states.csv` | Every tick including t=0 and terminal state: ID, role, active flag, 3D position, target, observed graph timestamp, ground reachability. A drone added or removed by hand has rows only while it was in the run. |
 | `graphs.jsonl` | Initial graph, each scheduled graph update, and each hand edit's re-check, including empty edge sets, active IDs, physical edge pairs, and reachable IDs |
-| `summary.json` | Completion flag, whether anything was changed by hand (`edited_by_hand`), the radio ranges in use at the end (`radio_range_m_at_end`), elapsed time, model labels, seed, per-mapper connected seconds/fraction and outage intervals |
+| `summary.json` | Completion flag, whether anything was changed by hand (`edited_by_hand`), the radio ranges in use at the end (`radio_range_m_at_end`), elapsed time, model labels, seed, per-mapper connected seconds/fraction and outage intervals, and `packets`: counts and delays per packet kind, with Health delays also per sending drone, whole LiDAR keyframes, command round trips, and collisions |
 | `resolved_config.yaml` | Validated config including default agent fields: how the run started (hand edits are not in it) |
 | `environment.json` | Python and dependency versions |
 | `trajectory_connectivity.png` | Final positions/links, complete trails, and each mapper's ground reachability over time |
@@ -214,9 +240,10 @@ relays at (200, 150) and (400, 300) and the mapper at (600, 450), all 10 m up;
 each hop is about 250 m against the 300 m placeholder range. The mapper flies
 out to (900, 675) and back at 4 m/s. Actual headless output:
 
-- Mapper outage: **[12.5, 175.5) seconds**. At 12.5 s the mapper has flown 50 m,
-  putting it right at the 300 m edge of relay_2's range.
-- Mapper connected time: **137 / 300 seconds = 45.7%**.
+- Mapper outage: **[13.0, 175.5) seconds**. At 12.5 s the mapper has flown 50 m,
+  putting it exactly at the 300 m edge of relay_2's range, which still counts as
+  linked; the next link check, at 13.0 s, finds it 302 m away.
+- Mapper connected time: **137.5 / 300 seconds = 45.8%**.
 
 **Small demo** (`SMALL_DEMO` in `tests/test_network.py`): the original 24-second run
 begins with the same chain on a 135 m strip. The ground is at (0, 0, 0), relays
@@ -248,7 +275,8 @@ Rerun with a new output directory to reproduce the demonstration.
 | `network/routing.py`: `next_hops(graph, destination)`, `route(graph, source, destination)` | Fewest-hops routing; grow it into link-quality (ETX) routing once links have quality scores |
 | `common/world.py`: `segment_crosses_box`, `line_of_sight` | Obstacle geometry for links now, and for path planning around obstacles later |
 | `strategies/fixed_relay.py`: `hop_limits`, `chain_slots`, `split_relays`, `match_relays_to_slots`, `optimal_chain_plan` | The straight-chain placement behind "auto optimal positions"; compare other placement strategies against it through `Simulator.set_relay_planner` |
-| `network/transport.py`: `Transport`, `score(packet, now_s)` | Outboxes, the priority score, and the shared channel; change `score` or `HEAD_START_S` to try another scheduling rule |
+| `network/transport.py`: `Transport`, `score(packet, now_s)`, `Transport.speed_bps`, `Transport.take_turn` | Outboxes, the priority score, the shared channel, Wi-Fi turn-taking, and link speed by distance; change `score` or `HEAD_START_S` to try another scheduling rule, `RATE_HZ` for other traffic |
+| `network/messages.py`: `pack`, `unpack`, `pack_keyframe` | The spec's byte formats for all 7 message types; the same code can build real packets on the drones |
 | `metrics/network.py`, `network/results.py`, `network/visualization.py` | Define metrics once, then log and display them |
 
 Policies currently receive global ground-truth positions: this is a centralized
@@ -261,8 +289,11 @@ Do not infer realistic flight or radio performance from this baseline. It has
 only one placement strategy (straight chains, one per mapper, switched on by
 hand, ignoring obstacles), no path planning around obstacles (drones fly
 straight through them), no outage recovery, no measured link quality, no
-routing delay, and only a first packet model (one link speed for every link,
-placeholder per-packet cost, no packet loss on working links).
+routing delay, and only a first packet model (placeholder speed zones by
+distance, placeholder per-packet cost and event rates, no packet loss on working
+links except collisions, which are retried without limit, every drone hearing
+every other (no hidden drones), no docking packets, and fewest-hops routing that
+ignores link speed).
 
 ## Verification
 

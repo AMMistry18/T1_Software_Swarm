@@ -83,8 +83,9 @@ class Simulator:
             self.positions, self.active, 0.0, self.link_model, self.roles
         )
         self.reachable = reachable_from(self.graph, self.ground_id)
-        # Packets: every node's outbox and the shared radio channel.
-        self.transport = Transport(self.config["packets"], self.dt_s)
+        # Packets: every drone's outbox and the shared radio channel. Wi-Fi's
+        # random countdowns use self.rng, so the same seed repeats a run exactly.
+        self.transport = Transport(self.config["packets"], self.dt_s, self.rng)
         self.history = [self._frame(True)]
 
     @property
@@ -134,7 +135,13 @@ class Simulator:
         if self.done:
             raise StopIteration("Simulation duration reached")
         # Packets move during this step over the links as they are at its start.
-        self.transport.step(self.tick, self.graph, self.roles, self.active)
+        # Link speeds depend on the radio ranges, which the sliders can change.
+        # getattr(..., default): a custom link model without range_m gets the
+        # config's ranges.
+        range_m = getattr(self.link_model, "range_m", self.config["radio_range_m"])
+        self.transport.step(
+            self.tick, self.graph, self.roles, self.active, self.positions, range_m
+        )
         previous = self.history[-1]
         for agent in self.agents:
             name = agent["id"]

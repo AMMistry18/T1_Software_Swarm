@@ -54,7 +54,11 @@ SMALL_DEMO = {
     "new_relay_speed_m_s": 1.0,
     "new_mapper_altitude_m": 10.0,
     "new_mapper_speed_m_s": 4.0,
-    "packets": {"link_rate_mbps": 10.0, "per_packet_overhead_s": 0.0003},
+    # One speed zone: every link runs at 10 Mb/s, out to the edge of its range.
+    "packets": {
+        "link_speed_zones": [{"up_to_range_fraction": 1.0, "mbps": 10.0}],
+        "per_packet_overhead_s": 0.0003,
+    },
     "obstacles_m": [],
     "agents": [
         {"id": "ground", "role": "ground_station", "position_m": [0, 0, 0]},
@@ -255,8 +259,31 @@ def test_terminal_reconnection_has_zero_metric_weight(config):
         ("grid_step_m", 0),
         ("new_relay_altitude_m", float("nan")),
         ("new_relay_speed_m_s", -1),
-        ("packets", {"link_rate_mbps": 0, "per_packet_overhead_s": 0.0003}),
-        ("packets", {"link_rate_mbps": 10, "per_packet_overhead_s": -1}),
+        ("packets", {"link_speed_zones": [], "per_packet_overhead_s": 0.0003}),
+        (
+            "packets",  # a zone with no speed
+            {
+                "link_speed_zones": [{"up_to_range_fraction": 1.0, "mbps": 0}],
+                "per_packet_overhead_s": 0.0003,
+            },
+        ),
+        (
+            "packets",  # zones out of order: the second doesn't reach farther
+            {
+                "link_speed_zones": [
+                    {"up_to_range_fraction": 0.6, "mbps": 10},
+                    {"up_to_range_fraction": 0.3, "mbps": 30},
+                ],
+                "per_packet_overhead_s": 0.0003,
+            },
+        ),
+        (
+            "packets",
+            {
+                "link_speed_zones": [{"up_to_range_fraction": 1.0, "mbps": 10}],
+                "per_packet_overhead_s": -1,
+            },
+        ),
     ],
 )
 def test_invalid_settings(config, key, value):
@@ -778,4 +805,42 @@ def test_window_draws_obstacles_adds_mappers_and_animates_routes(config):
     window.last_frame_s = window.clock()
     window.update()
     assert window.view.route_offset == pytest.approx(1.4)  # 14 units/s x 0.1 s
+    plt.close(window.fig)
+
+
+def test_window_shows_link_speeds_and_packet_delays(config):
+    """The live window draws each link thicker the faster it is, and its packet
+    panel lists every drone's recent Health delay and the keyframe count."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    from tar_swarm.network.visualization import InteractiveWindow, link_width
+
+    # Two zones: 30 Mb/s up to 30% of the range, 1 Mb/s beyond.
+    config["packets"]["link_speed_zones"] = [
+        {"up_to_range_fraction": 0.3, "mbps": 30.0},
+        {"up_to_range_fraction": 1.0, "mbps": 1.0},
+    ]
+    sim = Simulator(config)
+    for _ in range(20):  # 2 s
+        sim.step()
+    window = InteractiveWindow(sim)
+    window.view.draw()
+    # The demo's 3 hops are each 25-28 m long, most of a 30 m range: 1 Mb/s.
+    assert list(window.view.links.get_linewidths()) == [link_width(1e6)] * 3
+    # With 100 m ranges the same hops are under 30% of the range (30 Mb/s), and
+    # 3 longer links (45-79 m) appear at 1 Mb/s.
+    for role in ("ground_station", "relay", "mapper"):
+        sim.set_range(role, 100.0)
+    window.view.draw()
+    widths = sorted(window.view.links.get_linewidths())
+    assert widths == [link_width(1e6)] * 3 + [link_width(30e6)] * 3
+    window.paused = True  # a frame that only draws: the clock stays put
+    window.update()  # the first frame also writes the packet panel
+    panel = window.view.packet_panel.get_text()
+    for name in ("mapper_1", "relay_1", "relay_2"):
+        assert f"{name}: Health" in panel
+    assert "Keyframes complete:" in panel
     plt.close(window.fig)
