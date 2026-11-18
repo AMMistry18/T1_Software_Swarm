@@ -163,7 +163,7 @@ def test_reward_no_farming_and_components_logged():
     )
     d = br.as_dict()
     assert "coverage" in d and "total" in d
-    assert "idle" in d and "incomplete" in d
+    assert "idle" in d and "incomplete" in d and "connected" in d
     # Zero new coverage yields zero coverage reward.
     br0 = compute_reward(
         RewardWeights(),
@@ -179,6 +179,41 @@ def test_reward_no_farming_and_components_logged():
     )
     assert br0.coverage == 0.0
     assert br0.time < 0.0  # time always penalized — stationary is not free success
+
+
+def test_reward_disconnect_costs_more_than_short_relay_travel():
+    weights = RewardWeights()
+    # One decision of full disconnect vs relocating a relay ~50 m.
+    disc = compute_reward(
+        weights,
+        new_coverage_frac=0.0,
+        mission_complete=False,
+        disconnect_s=2.0,
+        decision_dt=2.0,
+        relay_travel_m=0.0,
+        repositions=0,
+        violations=0,
+        max_episode_time_s=600.0,
+        norm_scale_m=200.0,
+    )
+    move = compute_reward(
+        weights,
+        new_coverage_frac=0.0,
+        mission_complete=False,
+        disconnect_s=0.0,
+        decision_dt=2.0,
+        relay_travel_m=50.0,
+        repositions=1,
+        violations=0,
+        max_episode_time_s=600.0,
+        norm_scale_m=200.0,
+    )
+    assert disc.disconnect < move.relay_travel + move.reposition
+
+
+def test_lawnmower_covers_small_rectangle():
+    scenario = prepare_scenario(one_mapper_small())
+    assert scenario.coverage_gap_area_m2 / scenario.total_survey_area_m2 < 0.02
 
 
 def test_reward_idle_and_incomplete_block_hold_exploit():

@@ -22,32 +22,51 @@ class BaselineResult:
 
 
 def _spaced_candidates(scenario: PreparedScenario, n: int) -> list[str]:
-    """Pick up to n candidates well-spaced along x from base toward the region."""
-    base_x = scenario.request.base_position_m[0]
+    """Pick up to n candidates as a chain from base into the survey region.
+
+    Prefer increasing easting with modest |y| so relays cover mapper lawnmower
+    depth instead of clustering near the pad (which caused long disconnects).
+    """
+    if n <= 0 or not scenario.candidates:
+        return []
+    base_x = float(scenario.request.base_position_m[0])
+    usable = float(scenario.request.communication.usable_range_m)
+    # Aim hop spacing ~60% of usable range so the chain stays linked.
+    hop = max(usable * 0.55, 1.0)
+    xs = [c.position_m[0] for c in scenario.candidates]
+    target_depth = max(xs) if xs else base_x
     ranked = sorted(
         scenario.candidates,
-        key=lambda c: (abs(c.position_m[1]), c.position_m[0], c.id),
+        key=lambda c: (c.position_m[0], abs(c.position_m[1]), c.id),
     )
     chosen: list[str] = []
     last_x = base_x
-    for cand in ranked:
-        if not chosen:
-            chosen.append(cand.id)
-            last_x = cand.position_m[0]
-            continue
-        span = scenario.request.communication.usable_range_m * 0.35
-        if cand.position_m[0] - last_x >= span:
-            chosen.append(cand.id)
-            last_x = cand.position_m[0]
-        if len(chosen) >= n:
+    # Place relays at roughly hop, 2*hop, ... toward the far side.
+    for i in range(n):
+        goal_x = min(base_x + hop * (i + 1), target_depth)
+        best = None
+        best_key = None
+        # Stagger later relays off the x-axis so multi-mapper corridors stay linked.
+        y_bias = 0.0
+        if n >= 2 and i == n - 1:
+            y_bias = 1.0
+        elif n >= 3 and i == n - 2:
+            y_bias = -1.0
+        for cand in ranked:
+            if cand.id in chosen:
+                continue
+            # Prefer candidates near the goal x, modest |y|, and ahead of last hop.
+            dx = abs(cand.position_m[0] - goal_x)
+            ahead = cand.position_m[0] >= last_x - 1e-6
+            y_term = abs(cand.position_m[1] - y_bias * 15.0)
+            key = (0 if ahead else 1, dx, y_term, cand.id)
+            if best_key is None or key < best_key:
+                best_key = key
+                best = cand
+        if best is None:
             break
-    # Fall back to first N preprocess-ordered candidates.
-    if len(chosen) < n:
-        for cand in scenario.candidates:
-            if cand.id not in chosen:
-                chosen.append(cand.id)
-            if len(chosen) >= n:
-                break
+        chosen.append(best.id)
+        last_x = best.position_m[0]
     return chosen[:n]
 
 
@@ -103,7 +122,7 @@ def static_relay_baseline(scenario: PreparedScenario) -> BaselineResult:
 
 
 def search_relay_baseline(
-    scenario: PreparedScenario, max_combos: int = 64
+    scenario: PreparedScenario, max_combos: int = 96
 ) -> BaselineResult:
     """Search small combinations of candidate assignments while releasing segments.
 
@@ -175,8 +194,6 @@ def search_relay_baseline(
         )
         if best is None or _score(result) > _score(best):
             best = result
-        if result.success:
-            return result
     assert best is not None
     return best
 
@@ -203,8 +220,8 @@ def _score(result: BaselineResult) -> float:
     m = result.metrics
     return (
         (100.0 if result.success else 0.0)
-        + 10.0 * float(m["coverage_fraction"])
-        - 0.1 * float(m["disconnected_mapper_s"])
+        + 20.0 * float(m["coverage_fraction"])
+        - 2.0 * float(m["disconnected_mapper_s"])
         - 0.01 * float(m["relay_travel_m"])
         - 0.01 * float(m["mission_duration_s"])
     )

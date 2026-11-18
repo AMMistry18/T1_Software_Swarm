@@ -191,11 +191,11 @@ def validate_mission(
     # discrete path sampling can over-flag. Flight budget and dependencies are hard.
     ok = (
         surveys_done
-        and coverage.fraction >= 0.90 * coverable
+        and coverage.fraction >= 0.98 * coverable
         and returns_ok
         and budget_viol == 0
         and not dep_failures
-        and disconnect_s <= 0.25 * max(time_s, 1.0)
+        and disconnect_s <= 0.10 * max(time_s, 1.0)
     )
     return ValidationReport(
         ok=ok,

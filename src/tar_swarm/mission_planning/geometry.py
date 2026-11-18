@@ -129,18 +129,37 @@ def lawnmower_passes(
     overlap: float,
     angle_deg: float = 0.0,
 ) -> list[CoveragePass]:
-    """Generate clipped lawnmower passes. Angle rotates the pass direction."""
+    """Generate clipped lawnmower passes. Angle rotates the pass direction.
+
+    Pass rows are spaced by at most the effective swath and always include
+    first/last rows near the polygon edges so a sparse ``while y += spacing``
+    loop cannot leave an uncovered strip (the old 15% gap on small rectangles).
+    """
     spacing = effective_swath_m(swath_m, overlap)
     if spacing <= 0:
         raise ValueError("effective swath must be positive")
     rotated = affinity.rotate(poly, -angle_deg, origin="centroid")
     minx, miny, maxx, maxy = rotated.bounds
-    # Inset by half swath so the sensor footprint stays inside the region.
-    inset = spacing * 0.5
-    y = miny + inset
+    # Keep pass centers about half a swath inside the boundary.
+    inset = min(0.5 * swath_m, 0.5 * max(maxy - miny, 1e-6))
+    y0 = miny + inset
+    y1 = maxy - inset
+    if y1 < y0:
+        ys = [0.5 * (miny + maxy)]
+    else:
+        span = y1 - y0
+        n = max(1, int(np.floor(span / spacing + 1e-9)) + 1)
+        # Guarantee adjacent spacing <= effective swath.
+        while n > 1 and span / (n - 1) > spacing + 1e-9:
+            n += 1
+        if n == 1:
+            ys = [0.5 * (y0 + y1)]
+        else:
+            ys = [y0 + i * (span / (n - 1)) for i in range(n)]
+
     passes: list[CoveragePass] = []
     direction = 1
-    while y <= maxy - inset + 1e-9:
+    for y in ys:
         line = LineString([(minx - 1.0, y), (maxx + 1.0, y)])
         clipped = rotated.intersection(line)
         segments = _line_parts(clipped)
@@ -160,10 +179,8 @@ def lawnmower_passes(
             length = float(LineString(pts).length)
             if length > 1e-6:
                 passes.append(CoveragePass(pts, length))
-        y += spacing
         direction *= -1
     return passes
-
 
 def _line_parts(geom) -> list[list[tuple[float, float]]]:
     if geom.is_empty:

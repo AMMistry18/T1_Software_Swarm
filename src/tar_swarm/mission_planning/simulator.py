@@ -399,7 +399,7 @@ class PlanningSimulator:
         gap = float(self.scenario.coverage_gap_area_m2)
         total = max(float(self.scenario.total_survey_area_m2), 1e-6)
         coverable = max(0.5, 1.0 - gap / total)
-        coverage_ok = self.coverage.fraction >= 0.92 * coverable
+        coverage_ok = self.coverage.fraction >= 0.98 * coverable
         # Separation at launch/return clusters is monitored but does not alone
         # veto mission success if flight budgets and coverage/return hold; still
         # recorded in metrics for evaluation.

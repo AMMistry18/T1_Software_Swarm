@@ -10,7 +10,7 @@ from gymnasium import Env, spaces
 from tar_swarm.mission_planning.preprocess import prepare_scenario
 from tar_swarm.mission_planning.rewards import RewardWeights, compute_reward
 from tar_swarm.mission_planning.schemas import MissionRequest, PreparedScenario
-from tar_swarm.mission_planning.simulator import PlanningSimulator
+from tar_swarm.mission_planning.simulator import DroneMode, PlanningSimulator
 from tar_swarm.mission_planning.spaces import SpaceLayout
 
 
@@ -113,9 +113,6 @@ class MissionPlanningEnv(Env):
                 violations=1,
                 max_episode_time_s=self.sim.max_time,
                 norm_scale_m=self.norm_scale_m,
-                stagnant=False,
-                ended_incomplete=False,
-                coverage_fraction=0.0,
             )
             self._reward_log.append(breakdown.as_dict())
             return (
@@ -158,6 +155,11 @@ class MissionPlanningEnv(Env):
         # Punish do-nothing: survey still open and nobody is moving/working.
         stagnant = (not self.sim._survey_complete()) and (not self.sim._any_busy())
         ended_incomplete = (terminated or truncated) and not complete
+        mappers_need_link = any(
+            self.sim.drones[mid].mode in {DroneMode.SURVEY, DroneMode.TRANSIT}
+            for mid in self._mapper_ids
+        )
+        all_mappers_connected = bool(mappers_need_link and disconnect <= 1e-9)
 
         breakdown = compute_reward(
             self.reward_weights,
@@ -173,6 +175,8 @@ class MissionPlanningEnv(Env):
             stagnant=stagnant,
             ended_incomplete=ended_incomplete,
             coverage_fraction=float(self.sim.metrics.coverage_fraction),
+            all_mappers_connected=all_mappers_connected,
+            mappers_need_link=mappers_need_link,
         )
         self._reward_log.append(breakdown.as_dict())
         info: dict[str, Any] = {

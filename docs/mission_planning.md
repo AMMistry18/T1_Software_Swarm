@@ -71,16 +71,20 @@ Capacities are fixed and padded (`max_mappers`, `max_relays`, `max_candidates`,
 `max_segments_per_mapper`). Checkpoints declare capacities and reject larger
 scenarios.
 
-### Reward note (anti hold-collapse)
+### Reward / coverage priorities
 
-Pure ``hold`` used to score ~−0.1 (time only) while clumsy exploration scored
-much worse, so PPO collapsed to always-hold. Defaults now add:
+Mission quality targets are **full polygon coverage** and **high mapper link
+uptime**. Preprocess lawnmower rows always span the region edges (v1.1+) so
+simple rectangles are coverable to ~100% (older 15% gaps were a path bug, not
+an RL failure).
 
-- ``idle``: penalty each decision while the survey is incomplete and no drone
-  is busy
-- ``incomplete``: terminal penalty scaled by uncovered fraction if the episode
-  ends without ``mission_complete``
-- softer ``disconnect`` / ``violation`` so early attempts are not catastrophic
+Reward defaults:
+
+- ``coverage`` / ``incomplete``: push toward filling the region
+- ``disconnect`` (heavy) + ``connected`` (uptime bonus): prefer keeping links
+  over accepting outages
+- ``relay_travel``: discourage relays that wander far then return
+- ``idle``: still blocks the always-hold collapse
 
 ## Install
 
