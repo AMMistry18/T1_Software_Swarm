@@ -840,7 +840,8 @@ def test_window_shows_link_speeds_and_packet_delays(config):
     window.paused = True  # a frame that only draws: the clock stays put
     window.update()  # the first frame also writes the packet panel
     panel = window.view.packet_panel.get_text()
-    for name in ("mapper_1", "relay_1", "relay_2"):
-        assert f"{name}: Health" in panel
-    assert "Keyframes complete:" in panel
+    rows = [line.split()[0] for line in panel.splitlines()[3:6]]
+    assert rows == ["mapper_1", "relay_1", "relay_2"]  # one row per drone
+    assert "Waiting: ground " in panel
+    assert "keyframes" in panel.splitlines()[-1]
     plt.close(window.fig)

@@ -75,11 +75,12 @@ The ring around each drone is green when it can reach the ground station and red
 when it can't; a dashed line and an `x` show where a drone is flying. Moving green
 dashes trace each mapper's route to the ground station (`network/routing.py`),
 flowing toward the ground station like the mapper's messages. Each link is drawn
-thicker the faster it is (1, 10, or 30 Mb/s by default), a drone's name tag says
-how many packets wait in its outbox, and the panel in the map's top-left corner
-shows recent delays (each drone's Health and command round trip, and whole LiDAR
-keyframes; the 95th percentile of each stream's last 50) and how many
-keyframes and commands got through. Single packets aren't drawn: each is on the
+thicker the faster it is (about 2, 4, and 9 points wide at 1, 10, and 30 Mb/s),
+and the panel in the map's top-left corner, refreshed once a second, shows recent
+delays (each drone's Health and command round trip, and whole LiDAR keyframes;
+the 95th percentile of each stream's last 50), how many packets wait in each
+drone's outbox, and how many keyframes and commands got through. Single packets
+aren't drawn: each is on the
 air for only 1-10 ms. The toolbar's zoom and pan tools work as usual; mouse
 edits are ignored while one of them is on.
 

@@ -16,10 +16,10 @@ with the mouse while it plays:
 - space pauses and resumes; + and - change the simulation speed
 - moving green dashes show each mapping drone's route to the base (routing.py),
   flowing the way its messages travel
-- packets (transport.py): a link is drawn thicker the faster it is, a drone's
-  name tag says how many packets wait in its outbox, and the panel at the top
-  left shows recent delays and how many keyframes and commands got through.
-  Single packets are too quick to draw: each is on the air for 1-10 ms.
+- packets (transport.py): a link is drawn thicker the faster it is, and the
+  panel at the top left shows recent delays, how many packets wait in each
+  outbox, and how many keyframes and commands got through. Single packets are
+  too quick to draw: each is on the air for 1-10 ms.
 
 The clock keeps running until the window is closed (duration_s only ends headless
 runs). Drawing never moves the clock; only `InteractiveWindow.update` does.
@@ -86,31 +86,53 @@ HELP_TEXT = (
 
 
 def link_width(speed_bps):
-    """How thick to draw a link, in points: thicker = faster, on a log scale, so
-    1 Mb/s -> 1, 10 Mb/s -> 3, 30 Mb/s -> about 4."""
-    return max(0.5, 1 + 2 * np.log10(speed_bps / 1e6))
+    """How thick to draw a link, in points: thicker = faster. 1 Mb/s -> 1.75,
+    10 Mb/s -> 4, 30 Mb/s -> 9 (never more than 10), so the default speeds look
+    clearly different, even with the route's green dashes drawn on top."""
+    return min(10, 1.5 + 0.25 * speed_bps / 1e6)
 
 
-def packet_panel_text(transport):
-    """The packet panel: 95th-percentile delays over each stream's latest RECENT
-    packets, one line per drone, then how many keyframes and commands got
-    through so far."""
+def packet_panel_text(transport, drones):
+    """The packet panel, for the drones in the run right now (`drones`):
+
+        Recent delays (95% arrive within)
+                   Health  Command
+                  to base  + reply
+        mapper_1    50 ms   114 ms
+        relay_1     17 ms    95 ms
+        LiDAR keyframe to base: 239 ms
+        Waiting: ground 0, mapper_1 0, relay_1 0
+        Arrived: 847/1061 keyframes, 240/261 commands
+
+    Delays are the 95th percentile of each stream's latest RECENT packets.
+    "Command + reply" is the round trip: base -> drone -> ACK back at the base.
+    """
 
     def p95(delays_s):
         stats = delay_stats_ms(delays_s[-RECENT:])  # [-50:] = the last 50 items
         return "-" if stats is None else f"{stats['p95']:.0f} ms"
 
-    lines = [f"Delays, 95% faster than this (last {RECENT}):"]
-    drones = sorted(set(transport.health_delays_s) | set(transport.round_trips_s))
-    for drone in drones:  # .get(drone, []): no list yet means no packets yet
+    # Drones that send Health or get commands (every drone but the base).
+    measured = set(transport.health_delays_s) | set(transport.round_trips_s)
+    rows = [drone for drone in drones if drone in measured]
+    width = max([len(d) for d in rows] + [8])  # the name column's width
+    # f"{text:>7}" pads text to 7 characters, lined up on the right.
+    lines = [
+        "Recent delays (95% arrive within)",
+        f"{'':{width}} {'Health':>7}  {'Command':>7}",
+        f"{'':{width}} {'to base':>7}  {'+ reply':>7}",
+    ]
+    for drone in rows:  # .get(drone, []): no list yet means no packets yet
         health = p95(transport.health_delays_s.get(drone, []))
         command = p95(transport.round_trips_s.get(drone, []))
-        lines.append(f"  {drone}: Health {health}, command + ACK {command}")
-    lines.append(f"  LiDAR keyframe: {p95(transport.keyframe_delays_s)}")
+        lines.append(f"{drone:{width}} {health:>7}  {command:>7}")
+    lines.append(f"LiDAR keyframe to base: {p95(transport.keyframe_delays_s)}")
+    waiting = [f"{d} {len(transport.outboxes.get(d, []))}" for d in drones]
+    lines.append("Waiting: " + ", ".join(waiting))
     whole, made = len(transport.keyframe_delays_s), transport.keyframes_made
-    lines.append(f"Keyframes complete: {whole} of {made}")
     acked = sum(len(trips) for trips in transport.round_trips_s.values())
-    lines.append(f"Commands acknowledged: {acked} of {transport.commands_made}")
+    issued = transport.commands_made
+    lines.append(f"Arrived: {whole}/{made} keyframes, {acked}/{issued} commands")
     return "\n".join(lines)
 
 
@@ -214,6 +236,7 @@ class NetworkView:
             transform=ax.transAxes,
             va="top",
             fontsize=8,
+            family="monospace",  # every letter equally wide, so columns line up
             linespacing=1.3,
             zorder=5,
             bbox={"facecolor": "white", "edgecolor": "0.7", "alpha": 0.85},
@@ -297,7 +320,7 @@ class NetworkView:
         self._update_circles_and_labels(names, xy, frame)
         self._update_obstacles()
         if not self.live:  # the live window refreshes the panel itself
-            self.packet_panel.set_text(packet_panel_text(sim.transport))
+            self.packet_panel.set_text(packet_panel_text(sim.transport, names))
 
         cut_off = [name for name in mappers if name not in frame.reachable]
         if len(mappers) == 1:
@@ -355,11 +378,6 @@ class NetworkView:
             # A turned-off (inactive) drone has no working radio, so no circle.
             circle.set_visible(self.show_range[role] and frame.active[name])
             self.labels[name].xy = xy[name]
-            # The name tag also counts the packets waiting in the drone's outbox.
-            # (.get(name, []) doesn't add an empty outbox to the defaultdict.)
-            waiting = len(sim.transport.outboxes.get(name, []))
-            tag = f"{name} ({waiting} waiting)" if waiting else name
-            self.labels[name].set_text(tag)
 
     def _update_obstacles(self):
         """Give each obstacle box a gray rectangle; drop removed boxes' ones."""
@@ -421,6 +439,12 @@ class InteractiveWindow:
         self.last_panel_s = -np.inf  # when the packet panel was last rewritten
 
         self.fig = plt.figure(figsize=WINDOW_SIZE_IN)
+        if hasattr(self.fig.canvas, "get_tk_widget"):  # only in a real Tk window
+            # matplotlib asks Tk for its "arrow" cursor, which on Linux is an old
+            # arrow slanted to the right; "left_ptr" is the usual mouse pointer.
+            from matplotlib.backends import _backend_tk
+
+            _backend_tk.cursord[_backend_tk.cursors.POINTER] = "left_ptr"
         # fig.add_axes([left, bottom, width, height]) makes a drawing area; the
         # numbers are fractions of the window, 0 to 1. The map comes first, so
         # it's fig.axes[0].
@@ -559,7 +583,9 @@ class InteractiveWindow:
     def refresh_packet_panel(self):
         """Rewrite the packet panel. It is one of the still parts, so this asks
         for a full redraw; update() does it once every PANEL_REFRESH_S."""
-        self.view.packet_panel.set_text(packet_panel_text(self.simulator.transport))
+        sim = self.simulator
+        text = packet_panel_text(sim.transport, sorted(sim.positions))
+        self.view.packet_panel.set_text(text)
         self.fig.canvas.draw_idle()
 
     # Mouse
