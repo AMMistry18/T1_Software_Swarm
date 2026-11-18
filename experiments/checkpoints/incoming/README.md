@@ -1,15 +1,30 @@
-# Drop Kaggle checkpoints here
+# Shared / dropped checkpoints
 
-Copy your downloaded `best_model.zip` into this folder (meta.json optional):
+## MVP checkpoint (tracked in git)
 
-```text
-experiments/checkpoints/incoming/best_model.zip
+`best_model.zip` is the current shared MaskablePPO MVP weights (promoted from
+the anti-thrash Kaggle run). Teammates can use it directly:
+
+```bash
+python -m tar_swarm.mission_planning.cli plan \
+  --scenario multi_mapper \
+  --checkpoint experiments/checkpoints/incoming/best_model.zip \
+  --output /tmp/plan.json
+
+python scripts/play_mission_on_network.py \
+  --scenario multi_mapper \
+  --checkpoint experiments/checkpoints/incoming/best_model.zip \
+  --animate \
+  --output experiments/results/demo_network_live
 ```
 
-Then tell the agent to evaluate, or run:
+## Dropping a new Kaggle download
+
+Copy a fresh download here as e.g. `best_model (4).zip` (numbered zips stay
+gitignored). To promote it for the team, overwrite `best_model.zip` and commit.
 
 ```bash
 ./scripts/eval_incoming_checkpoint.sh
 ```
 
-Outputs go to `experiments/results/incoming_eval/`.
+Eval outputs go to `experiments/results/incoming_eval/`.

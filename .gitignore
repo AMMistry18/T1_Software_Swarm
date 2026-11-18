@@ -50,5 +50,7 @@ Thumbs.db
 !.env.example
 *.blend1
 *.blend2
+# Ignore ad-hoc Kaggle downloads; keep the shared MVP checkpoint tracked.
 experiments/checkpoints/incoming/*.zip
+!experiments/checkpoints/incoming/best_model.zip
 experiments/results/incoming_eval/
